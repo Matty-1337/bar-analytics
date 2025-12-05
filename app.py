@@ -18,6 +18,7 @@ st.set_page_config(
 @st.cache_data
 def load_all_data():
     data = {}
+    errors = [] # Capture errors to display in sidebar
 
     def load_safe(filename):
         if os.path.exists(filename):
@@ -30,11 +31,12 @@ def load_all_data():
     # --- A. LOAD MASTER ---
     try:
         data['df_master'] = pd.read_parquet('master_data.parquet')
-    except:
+    except Exception as e_pq:
         try:
             data['df_master'] = pd.read_csv('master_data.csv', low_memory=False)
-        except:
+        except Exception as e_csv:
             data['df_master'] = pd.DataFrame()
+            errors.append(f"Master Data Error: {e_pq} | {e_csv}")
 
     if not data['df_master'].empty:
         cols = data['df_master'].columns
@@ -67,9 +69,9 @@ def load_all_data():
     else:
         data['monthly_revenue'] = pd.DataFrame()
 
-    return data
+    return data, errors
 
-data = load_all_data()
+data, load_errors = load_all_data()
 
 # --- 3. SIDEBAR ---
 st.markdown("""
@@ -87,6 +89,9 @@ with st.sidebar:
         st.success("✅ Master Data: Active")
     else:
         st.error("❌ Master Data: Missing")
+        # Show specific error if it exists
+        if load_errors:
+            st.warning(f"Debug Info: {load_errors[0]}")
     
     if not data['df_forecast'].empty:
         st.success("✅ Forecast Model: Active")
@@ -184,7 +189,6 @@ with tabs[2]:
     
     if not data['df_map'].empty and not data['df_geo'].empty:
         # Prepare Data for HeatMapWithTime
-        # We need a list of lists of points [[lat, lon, intensity], ...] for each time step
         
         # 1. Clean Map Data
         df_m = data['df_map'].copy()
@@ -195,6 +199,9 @@ with tabs[2]:
         
         # 2. Clean Time Data
         df_g = data['df_geo'].copy()
+        heat_data = []
+        time_index = []
+        
         if 'Month' in df_g.columns and 'GeoPressure_Total' in df_g.columns:
             df_g['Month'] = pd.to_datetime(df_g['Month'])
             df_g = df_g.sort_values('Month')
@@ -204,21 +211,19 @@ with tabs[2]:
             df_g['Intensity'] = df_g['GeoPressure_Total'] / max_p if max_p > 0 else 0.5
             
             # 3. Construct Time Series Data
-            heat_data = []
-            time_index = []
-            
             for _, row in df_g.iterrows():
                 monthly_points = []
                 intensity = row['Intensity']
-                time_index.append(row['Month'].strftime('%Y-%m'))
                 
                 # Apply this month's "Pressure" to all competitor locations
                 for _, loc in df_m.iterrows():
                     monthly_points.append([loc['Latitude'], loc['Longitude'], intensity])
                 
-                heat_data.append(monthly_points)
+                if monthly_points:
+                    heat_data.append(monthly_points)
+                    time_index.append(row['Month'].strftime('%Y-%m'))
             
-            # 4. Render Map
+            # 4. Render Map (Fixed Crash)
             m = folium.Map(location=[df_m['Latitude'].mean(), df_m['Longitude'].mean()], zoom_start=13)
             
             # Add Static Markers
@@ -232,14 +237,15 @@ with tabs[2]:
                     tooltip=loc_name
                 ).add_to(m)
 
-            # Add Time Player
-            plugins.HeatMapWithTime(
-                heat_data,
-                index=time_index,
-                auto_play=True,
-                radius=40,
-                max_opacity=0.6
-            ).add_to(m)
+            # Only add HeatMapWithTime if data exists (Prevents TypeError crash)
+            if heat_data and len(heat_data) > 0:
+                plugins.HeatMapWithTime(
+                    heat_data,
+                    index=time_index,
+                    auto_play=True,
+                    radius=40,
+                    max_opacity=0.6
+                ).add_to(m)
             
             st_folium(m, width=800, height=500)
             st.caption("Use the slider at the bottom of the map to view market pressure changes over time.")
