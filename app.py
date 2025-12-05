@@ -63,7 +63,6 @@ def load_all_data():
                     errors.append(f"Failed to load {f}: {e}")
 
     # Fallback: If Master is still empty, reconstruct from Forecast/Revenue data if available
-    # This prevents the "Red Box" entirely
     if data['df_master'].empty:
         errors.append("Master Data completely missing. Using Forecast history as fallback.")
     
@@ -246,23 +245,19 @@ with tabs[1]:
 with tabs[2]:
     st.header("Competitive Intelligence Models")
     st.markdown("""
-    This section synthesizes three distinct models to evaluate market positioning:
-    1.  **Map Data (Static):** Physical locations of competitors relative to Best Regards.
-    2.  **Competitor Impact Ranking:** Determining which competitors actively steal market share.
-    3.  **Geo-Pressure Model:** Measuring the density of competition over time (The "Heat").
+    This section synthesizes three distinct models to evaluate market positioning.
     """)
     
     if not data['df_map'].empty:
-        # --- 1. DATA PREP ---
         df_m = data['df_map'].copy()
         df_m = df_m.dropna(subset=['Latitude', 'Longitude'])
         
-        # --- 2. LAYOUT ---
-        st.subheader("1. & 3. Geospatial Market Pressure (Time-Lapse Heatmap)")
+        # --- 1. & 3. MAP ---
+        st.subheader("1. Static Map & 3. Geo-Pressure Time-Lapse")
         st.caption("Use the slider at the bottom to visualize how 'Geo-Pressure' (Market Intensity) shifts over time.")
         
         try:
-            # Prepare Base Map
+            # Prepare Map Data
             min_lat, max_lat = df_m['Latitude'].min(), df_m['Latitude'].max()
             min_lon, max_lon = df_m['Longitude'].min(), df_m['Longitude'].max()
             m = folium.Map(location=[df_m['Latitude'].mean(), df_m['Longitude'].mean()], zoom_start=13)
@@ -278,7 +273,10 @@ with tabs[2]:
                     tooltip=loc_name
                 ).add_to(m)
 
-            # Time Data (Geo-Pressure)
+            # Time Data Logic
+            heat_data = []
+            time_index = []
+            
             if not data['df_geo'].empty and 'Month' in data['df_geo'].columns and 'GeoPressure_Total' in data['df_geo'].columns:
                 try:
                     df_g = data['df_geo'].copy()
@@ -287,9 +285,6 @@ with tabs[2]:
                     
                     max_p = df_g['GeoPressure_Total'].max()
                     df_g['Intensity'] = (df_g['GeoPressure_Total'] / max_p).astype(float) if max_p > 0 else 0.5
-                    
-                    heat_data = []
-                    time_index = []
                     
                     for _, row in df_g.iterrows():
                         monthly_points = []
@@ -314,117 +309,20 @@ with tabs[2]:
                             use_local_extrema=False
                         ).add_to(m)
                 except Exception as e:
-                    st.warning(f"Note: Showing static map due to data format issue ({e})")
+                    st.warning(f"Time-Lapse Data Error: {e}")
 
-            # RENDER METHOD: DIRECT HTML (Avoids st_folium serialization crash)
+            # RENDER: DIRECT HTML TO PREVENT CRASH
+            # This is key: st_folium crashes on complex plugins sometimes.
+            # Using components.html bypasses the Streamlit wrapper issues.
             map_html = m._repr_html_()
             components.html(map_html, height=500)
             
         except Exception as e:
             st.error(f"Map Rendering Error: {e}")
             
-        # --- 3. IMPACT RANKINGS ---
+        # --- 2. IMPACT RANKINGS ---
         st.markdown("---")
         st.subheader("2. Competitor Impact Rankings")
         st.markdown("**What this shows:** We rank competitors by their estimated Revenue Impact and Proximity.")
         
         impact_df = df_m.copy()
-        if 'Total_Revenue' in impact_df.columns:
-            impact_df = impact_df.sort_values('Total_Revenue', ascending=False)
-            cols_to_show = ['Location Name', 'Total_Revenue', 'Distance_mi'] if 'Distance_mi' in impact_df.columns else ['Location Name', 'Total_Revenue']
-            
-            st.dataframe(
-                impact_df[cols_to_show].head(10),
-                hide_index=True,
-                column_config={
-                    "Total_Revenue": st.column_config.NumberColumn("Est. Annual Revenue", format="$%.0f"),
-                    "Distance_mi": st.column_config.NumberColumn("Distance (mi)", format="%.2f mi")
-                }
-            )
-        else:
-            st.info("Revenue data missing for Impact Rankings.")
-            
-    else:
-        st.warning("⚠️ Map data missing.")
-
-# --- TAB 3: VOIDS ---
-with tabs[3]:
-    st.header("Operational Risk & Void Detection")
-    st.markdown("💡 **Analyst Insight:** *High void rates indicate potential operational slippage. Servers with Z-Scores > 2.0 are statistically anomalous.*")
-    
-    # 1. SERVER BREAKDOWN (RESTORED FULL TABLE)
-    st.subheader("Employee Breakdown (Suspicious Servers)")
-    if not data['df_servers'].empty:
-        st.dataframe(
-            data['df_servers'], 
-            hide_index=True,
-            use_container_width=True,
-            column_config={
-                "Void_Rate": st.column_config.NumberColumn("Void Rate", format="%.2f%%"),
-                "Void_Z_Score": st.column_config.NumberColumn("Z-Score", format="%.2f"),
-                "Potential_Loss": st.column_config.NumberColumn("Est. Loss", format="$%.2f")
-            }
-        )
-    else:
-        st.info("No server alerts.")
-            
-    # 2. ADDITIONAL BREAKDOWNS
-    col1, col2 = st.columns(2)
-    with col1:
-        st.subheader("High Risk Hours")
-        if not data['df_voids_h'].empty:
-            st.bar_chart(data['df_voids_h'].set_index('Hour_of_Day')['Void_Rate'])
-        else:
-            st.info("No hourly data.")
-            
-    with col2:
-        st.subheader("Suspicious Combinations (Server + Tab)")
-        if not data['df_combo'].empty:
-            st.dataframe(data['df_combo'], hide_index=True)
-        else:
-            st.info("No combination data.")
-
-# --- TAB 4: SENTIMENT ---
-with tabs[4]:
-    st.header("Sentiment Analysis")
-    
-    col1, col2 = st.columns([3, 1])
-    
-    with col1:
-        if not data['df_sentiment'].empty:
-            fig = go.Figure()
-            fig.add_trace(go.Bar(
-                x=data['df_sentiment']['Month'],
-                y=data['df_sentiment']['BestRegards_Revenue'],
-                name="Revenue ($)",
-                marker_color='lightgreen',
-                opacity=0.6
-            ))
-            fig.add_trace(go.Scatter(
-                x=data['df_sentiment']['Month'],
-                y=data['df_sentiment']['CX_Index'],
-                name="CX Index",
-                yaxis="y2",
-                line=dict(color='red', width=3)
-            ))
-            fig.update_layout(
-                title="Correlation: Revenue vs. Customer Experience",
-                xaxis_title="Month",
-                yaxis=dict(title="Revenue ($)"),
-                yaxis2=dict(
-                    title="CX Index (0-1)",
-                    overlaying="y",
-                    side="right",
-                    range=[0, 1] 
-                ),
-                legend=dict(x=0, y=1.1, orientation="h")
-            )
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.warning("⚠️ Sentiment data missing.")
-            
-    with col2:
-        st.info("""
-        💡 **Analyst Insight:**
-        **The "Lag Effect":** A drop in sentiment today typically correlates with a revenue drop **2-4 weeks later**.
-        """)
