@@ -29,9 +29,11 @@ def load_all_data():
         return pd.DataFrame()
 
     def clean_numeric(df, cols):
-        """Forces columns to be numeric, replacing errors with 0"""
+        """Forces columns to be numeric, handling currency symbols and commas"""
         for c in cols:
             if c in df.columns:
+                # Convert to string, strip $ and ,, then convert to numeric
+                df[c] = df[c].astype(str).str.replace('$', '', regex=False).str.replace(',', '', regex=False)
                 df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
         return df
 
@@ -56,13 +58,15 @@ def load_all_data():
         data['df_master'] = clean_numeric(data['df_master'], ['Net Price', 'Qty'])
 
     # --- B. LOAD ANALYTICS FILES ---
+    # Apply robust cleaning to all critical columns
     data['df_forecast'] = clean_numeric(load_safe('forecast_values.csv'), ['Forecasted_Revenue'])
     data['df_metrics'] = load_safe('forecast_metrics.csv')
     
     # Menu: Filter out Zeros immediately
     menu_raw = load_safe('menu_forensics.csv')
     menu_raw = clean_numeric(menu_raw, ['Qty_Sold', 'Total_Revenue', 'Item_Void_Rate'])
-    data['df_menu'] = menu_raw[(menu_raw['Total_Revenue'] > 0) & (menu_raw['Qty_Sold'] > 0)]
+    # Filter to only show active items
+    data['df_menu'] = menu_raw[(menu_raw['Total_Revenue'] > 0) | (menu_raw['Qty_Sold'] > 0)]
 
     data['df_map'] = load_safe('map_data.csv')
     
@@ -71,6 +75,8 @@ def load_all_data():
     data['df_voids_d'] = clean_numeric(load_safe('daily_voids.csv'), ['Void_Rate'])
     
     data['df_combo'] = load_safe('suspicious_combinations.csv')
+    
+    # Clean Geo & Sentiment
     data['df_geo'] = clean_numeric(load_safe('geo_pressure.csv'), ['GeoPressure_Total'])
     data['df_sentiment'] = clean_numeric(load_safe('sentiment.csv'), ['CX_Index', 'BestRegards_Revenue'])
 
@@ -231,14 +237,15 @@ with tabs[2]:
                     df_g = df_g.sort_values('Month')
                     
                     max_p = df_g['GeoPressure_Total'].max()
-                    df_g['Intensity'] = df_g['GeoPressure_Total'] / max_p if max_p > 0 else 0.5
+                    # Ensure Intensity is a pure float
+                    df_g['Intensity'] = (df_g['GeoPressure_Total'] / max_p).astype(float) if max_p > 0 else 0.5
                     
                     for _, row in df_g.iterrows():
                         monthly_points = []
-                        intensity = row['Intensity']
+                        intensity = float(row['Intensity'])
                         # Add intensity to all competitor locations
                         for _, loc in df_m.iterrows():
-                            monthly_points.append([loc['Latitude'], loc['Longitude'], intensity])
+                            monthly_points.append([float(loc['Latitude']), float(loc['Longitude']), intensity])
                         
                         if monthly_points:
                             heat_data.append(monthly_points)
@@ -262,16 +269,24 @@ with tabs[2]:
                 ).add_to(m)
 
             # Time Player (Only if valid data exists)
-            if heat_data and len(heat_data) > 0:
-                plugins.HeatMapWithTime(
-                    heat_data,
-                    index=time_index,
-                    auto_play=True,
-                    radius=40,
-                    max_opacity=0.6
-                ).add_to(m)
-            
-            st_folium(m, width=800, height=500)
+            # Wrap in Try-Except to prevent map crash if folium fails
+            try:
+                if heat_data and len(heat_data) > 0:
+                    plugins.HeatMapWithTime(
+                        heat_data,
+                        index=time_index,
+                        auto_play=True,
+                        radius=40,
+                        max_opacity=0.6
+                    ).add_to(m)
+                st_folium(m, width=800, height=500)
+            except Exception as e:
+                st.error(f"Interactive Map Error: {e}")
+                # Fallback to simple map
+                m_static = folium.Map(location=[df_m['Latitude'].mean(), df_m['Longitude'].mean()], zoom_start=13)
+                for _, row in df_m.iterrows():
+                    folium.Marker([row['Latitude'], row['Longitude']]).add_to(m_static)
+                st_folium(m_static, width=800, height=500)
             
         else:
             st.error("Map Data exists but contains no valid Latitude/Longitude.")
