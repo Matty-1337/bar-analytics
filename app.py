@@ -149,6 +149,7 @@ def to_num(df, cols):
 data["menu"] = to_num(data["menu"], ["Total_Revenue", "Qty_Sold"])
 data["servers"] = to_num(data["servers"], ["Void_Rate", "Void_Z_Score", "Potential_Loss"])
 data["sentiment"] = to_num(data["sentiment"], ["CX_Index", "BestRegards_Revenue"])
+# Note: For mapping, 0.0 lat/long is not ideal, but we handle the filtering in the map tab logic
 data["map"] = to_num(data["map"], ["Latitude", "Longitude", "Total_Revenue"])
 
 
@@ -357,19 +358,34 @@ with tabs[2]:
 
     # Require valid numeric coordinates
     if {"Latitude", "Longitude"}.issubset(df.columns):
+        # We enforce numeric again here to be safe before mapping
         df["Latitude"] = pd.to_numeric(df["Latitude"], errors="coerce")
         df["Longitude"] = pd.to_numeric(df["Longitude"], errors="coerce")
 
         df_map = df.dropna(subset=["Latitude", "Longitude"]).copy()
 
         if not df_map.empty:
-            center = [df_map["Latitude"].mean(), df_map["Longitude"].mean()]
+            # Calculate center, ignoring NaNs for the mean calculation
+            center_lat = df_map["Latitude"].mean()
+            center_lon = df_map["Longitude"].mean()
+            
+            # Fallback if mean returns NaN (e.g., all values were bad)
+            if pd.isna(center_lat) or pd.isna(center_lon):
+                center = [29.76, -95.36] # Default fallback
+            else:
+                center = [center_lat, center_lon]
+
             m = folium.Map(location=center, zoom_start=14, tiles="cartodbdark_matter")
 
             for _, r in df_map.iterrows():
                 try:
                     lat = float(r["Latitude"])
                     lon = float(r["Longitude"])
+                    
+                    # ERROR FIX: Explicitly check for NaN before passing to Folium
+                    if pd.isna(lat) or pd.isna(lon):
+                        continue
+                        
                 except (TypeError, ValueError):
                     continue
 
