@@ -17,6 +17,7 @@ st.set_page_config(
 @st.cache_data
 def load_all_data():
     data = {}
+    errors = []
 
     # Helper to load CSV safely
     def load_safe(filename):
@@ -27,14 +28,18 @@ def load_all_data():
                 return pd.DataFrame()
         return pd.DataFrame()
 
-    # --- A. LOAD MASTER (Try Parquet First) ---
+    # --- A. LOAD MASTER (Try Parquet First, then CSV) ---
+    data['df_master'] = pd.DataFrame()
     try:
+        # Primary method: Parquet
         data['df_master'] = pd.read_parquet('master_data.parquet')
-    except:
+    except Exception as e_parquet:
+        # Fallback method: CSV (if they uploaded csv instead or pyarrow is missing)
         try:
             data['df_master'] = pd.read_csv('master_data.csv', low_memory=False)
-        except:
-            data['df_master'] = pd.DataFrame()
+        except Exception as e_csv:
+            # Record error for sidebar display
+            errors.append(f"Master Data Load Failed: {str(e_parquet)} | {str(e_csv)}")
 
     # Fix Master Dates
     if not data['df_master'].empty:
@@ -45,7 +50,7 @@ def load_all_data():
 
     # --- B. LOAD ANALYTICS FILES ---
     data['df_forecast'] = load_safe('forecast_values.csv')
-    data['df_metrics'] = load_safe('forecast_metrics.csv') # Comparison of Models
+    data['df_metrics'] = load_safe('forecast_metrics.csv')
     data['df_menu'] = load_safe('menu_forensics.csv')
     data['df_map'] = load_safe('map_data.csv')
     data['df_servers'] = load_safe('suspicious_servers.csv')
@@ -71,9 +76,9 @@ def load_all_data():
     else:
         data['monthly_revenue'] = pd.DataFrame()
 
-    return data
+    return data, errors
 
-data = load_all_data()
+data, load_errors = load_all_data()
 
 # --- 3. SIDEBAR ---
 st.markdown("""
@@ -87,13 +92,21 @@ st.markdown("""
 with st.sidebar:
     st.title("🍸 Best Regards")
     st.write("### Executive Portal")
+    
+    # Status Indicators
     if not data['df_master'].empty:
         st.success("✅ Master Data: Active")
     else:
         st.error("❌ Master Data: Missing")
+        if load_errors:
+            with st.expander("See Error Details"):
+                for e in load_errors:
+                    st.write(e)
     
     if not data['df_forecast'].empty:
-        st.success("✅ Forecast AI: Active")
+        st.success("✅ Forecast Model: Active")
+    else:
+        st.warning("⚠️ Forecast: Missing")
 
 # --- 4. MAIN TABS ---
 st.title("📊 Business Intelligence Dashboard")
@@ -120,7 +133,7 @@ with tabs[0]:
             if len(fc_data.columns) >= 1: fc_data.rename(columns={fc_data.columns[0]: 'Month'}, inplace=True)
             if len(fc_data.columns) >= 2: fc_data.rename(columns={fc_data.columns[1]: 'Revenue'}, inplace=True)
                 
-            fc_data['Type'] = 'Forecast'
+            fc_data['Type'] = 'Projection'
             
             # Combine Historical + Forecast for full timeline
             combined_df = fc_data
@@ -128,7 +141,7 @@ with tabs[0]:
                 try:
                     # Align columns
                     hist = data['monthly_revenue'].copy()
-                    hist['Month'] = hist['Month'].astype(str) # Ensure string match first
+                    hist['Month'] = hist['Month'].astype(str)
                     fc_data['Month'] = fc_data['Month'].astype(str)
                     combined_df = pd.concat([hist, fc_data], ignore_index=True)
                     
@@ -139,8 +152,8 @@ with tabs[0]:
                     combined_df = fc_data
 
             fig = px.line(combined_df, x='Month', y='Revenue', color='Type', 
-                          title="Revenue Trajectory: Historical Performance vs. AI Projection", 
-                          color_discrete_map={'Historical': 'gray', 'Forecast': '#FF4B4B'},
+                          title="Revenue Trajectory: Historical Performance vs. Projection", 
+                          color_discrete_map={'Historical': 'gray', 'Projection': '#FF4B4B'},
                           markers=True)
             st.plotly_chart(fig, use_container_width=True)
             
@@ -151,8 +164,8 @@ with tabs[0]:
         st.info("💡 **Analyst Insight:**\nThe red line represents the projected revenue trajectory based on historical patterns. Identifying divergences here allows us to intervene before revenue dips occur.")
         
         if not data['df_metrics'].empty:
-            st.write("### Model Performance")
-            st.write("Comparing predictive accuracy of ARIMA vs Prophet:")
+            st.write("### Model Accuracy")
+            st.write("Comparing predictive models (ARIMA vs Prophet):")
             st.dataframe(data['df_metrics'], hide_index=True)
         else:
             st.write("*(Model metrics unavailable)*")
@@ -183,7 +196,7 @@ with tabs[1]:
         
         with col2:
             st.info("""
-            **How to read this chart:**
+            **Analyst Insight:**
             - ⭐ **Stars:** High Profit, High Volume. (Keep & Promote)
             - 🐴 **Plowhorses:** Low Profit, High Volume. (Increase Price)
             - 🧩 **Puzzles:** High Profit, Low Volume. (Marketing Push)
