@@ -18,7 +18,7 @@ st.set_page_config(
 @st.cache_data
 def load_all_data():
     data = {}
-    errors = [] # Capture errors to display in sidebar
+    errors = []
 
     def load_safe(filename):
         if os.path.exists(filename):
@@ -28,33 +28,51 @@ def load_all_data():
                 return pd.DataFrame()
         return pd.DataFrame()
 
+    def clean_numeric(df, cols):
+        """Forces columns to be numeric, replacing errors with 0"""
+        for c in cols:
+            if c in df.columns:
+                df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
+        return df
+
     # --- A. LOAD MASTER ---
     try:
         data['df_master'] = pd.read_parquet('master_data.parquet')
-    except Exception as e_pq:
+    except:
         try:
             data['df_master'] = pd.read_csv('master_data.csv', low_memory=False)
-        except Exception as e_csv:
+        except Exception as e:
             data['df_master'] = pd.DataFrame()
-            errors.append(f"Master Data Error: {e_pq} | {e_csv}")
+            errors.append(f"Master Load Error: {e}")
 
+    # Fix Master Data Types
     if not data['df_master'].empty:
+        # Fix Dates
         cols = data['df_master'].columns
         if 'Date' in cols:
             data['df_master']['Date'] = pd.to_datetime(data['df_master']['Date'], errors='coerce')
             data['df_master']['Month'] = data['df_master']['Date'].dt.to_period('M').astype(str)
+        # Fix Numbers
+        data['df_master'] = clean_numeric(data['df_master'], ['Net Price', 'Qty'])
 
     # --- B. LOAD ANALYTICS FILES ---
-    data['df_forecast'] = load_safe('forecast_values.csv')
+    data['df_forecast'] = clean_numeric(load_safe('forecast_values.csv'), ['Forecasted_Revenue'])
     data['df_metrics'] = load_safe('forecast_metrics.csv')
-    data['df_menu'] = load_safe('menu_forensics.csv')
+    
+    # Menu: Filter out Zeros immediately
+    menu_raw = load_safe('menu_forensics.csv')
+    menu_raw = clean_numeric(menu_raw, ['Qty_Sold', 'Total_Revenue', 'Item_Void_Rate'])
+    data['df_menu'] = menu_raw[(menu_raw['Total_Revenue'] > 0) & (menu_raw['Qty_Sold'] > 0)]
+
     data['df_map'] = load_safe('map_data.csv')
-    data['df_servers'] = load_safe('suspicious_servers.csv')
-    data['df_voids_h'] = load_safe('hourly_voids.csv')
-    data['df_voids_d'] = load_safe('daily_voids.csv')
+    
+    data['df_servers'] = clean_numeric(load_safe('suspicious_servers.csv'), ['Void_Rate', 'Void_Z_Score', 'Potential_Loss'])
+    data['df_voids_h'] = clean_numeric(load_safe('hourly_voids.csv'), ['Void_Rate', 'Hour_of_Day'])
+    data['df_voids_d'] = clean_numeric(load_safe('daily_voids.csv'), ['Void_Rate'])
+    
     data['df_combo'] = load_safe('suspicious_combinations.csv')
-    data['df_geo'] = load_safe('geo_pressure.csv')
-    data['df_sentiment'] = load_safe('sentiment.csv')
+    data['df_geo'] = clean_numeric(load_safe('geo_pressure.csv'), ['GeoPressure_Total'])
+    data['df_sentiment'] = clean_numeric(load_safe('sentiment.csv'), ['CX_Index', 'BestRegards_Revenue'])
 
     # --- C. PREPARE MONTHLY REVENUE ---
     if not data['df_master'].empty and 'Month' in data['df_master'].columns:
@@ -89,9 +107,6 @@ with st.sidebar:
         st.success("✅ Master Data: Active")
     else:
         st.error("❌ Master Data: Missing")
-        # Show specific error if it exists
-        if load_errors:
-            st.warning(f"Debug Info: {load_errors[0]}")
     
     if not data['df_forecast'].empty:
         st.success("✅ Forecast Model: Active")
@@ -116,11 +131,13 @@ with tabs[0]:
     with col_a:
         if not data['df_forecast'].empty:
             fc_data = data['df_forecast'].copy()
-            # Column Cleanup
+            # Emergency Column Rename
             if len(fc_data.columns) >= 1: fc_data.rename(columns={fc_data.columns[0]: 'Month'}, inplace=True)
             if len(fc_data.columns) >= 2: fc_data.rename(columns={fc_data.columns[1]: 'Revenue'}, inplace=True)
+            
             fc_data['Type'] = 'Projection'
             
+            # Combine
             combined_df = fc_data
             if not data['monthly_revenue'].empty:
                 try:
@@ -131,7 +148,7 @@ with tabs[0]:
                     combined_df['Month'] = pd.to_datetime(combined_df['Month'])
                     combined_df = combined_df.sort_values('Month')
                 except:
-                    combined_df = fc_data
+                    pass
 
             fig = px.line(combined_df, x='Month', y='Revenue', color='Type', 
                           title="Revenue Trajectory: Historical vs. Projection", 
@@ -172,7 +189,7 @@ with tabs[1]:
         with col2:
             st.info("**Strategy:** Promote Stars, Re-price Plowhorses, Re-invent Puzzles, Remove Dogs.")
             
-        with st.expander("View Full Menu Data Table"):
+        with st.expander("View Active Menu Data"):
             st.dataframe(
                 data['df_menu'],
                 column_config={
@@ -183,50 +200,57 @@ with tabs[1]:
     else:
         st.warning("⚠️ Menu data missing.")
 
-# --- TAB 2: MARKET HEATMAP (TIME LAPSE) ---
+# --- TAB 2: MARKET HEATMAP ---
 with tabs[2]:
-    st.header("Geospatial Market Pressure (Time-Lapse)")
+    st.header("Geospatial Market Pressure")
     
-    if not data['df_map'].empty and not data['df_geo'].empty:
-        # Prepare Data for HeatMapWithTime
-        
-        # 1. Clean Map Data
+    if not data['df_map'].empty:
+        # 1. Clean Map Data (Crash Prevention)
         df_m = data['df_map'].copy()
+        
+        # Robust Rename
         cols = df_m.columns.str.lower()
         if 'latitude' in cols: df_m.rename(columns={df_m.columns[list(cols).index('latitude')]: 'Latitude'}, inplace=True)
         if 'longitude' in cols: df_m.rename(columns={df_m.columns[list(cols).index('longitude')]: 'Longitude'}, inplace=True)
+        
+        # Force Numeric & Drop NaNs
+        df_m['Latitude'] = pd.to_numeric(df_m['Latitude'], errors='coerce')
+        df_m['Longitude'] = pd.to_numeric(df_m['Longitude'], errors='coerce')
         df_m = df_m.dropna(subset=['Latitude', 'Longitude'])
         
-        # 2. Clean Time Data
-        df_g = data['df_geo'].copy()
-        heat_data = []
-        time_index = []
-        
-        if 'Month' in df_g.columns and 'GeoPressure_Total' in df_g.columns:
-            df_g['Month'] = pd.to_datetime(df_g['Month'])
-            df_g = df_g.sort_values('Month')
+        if not df_m.empty:
+            # 2. Setup Time Data (Only if valid)
+            heat_data = []
+            time_index = []
             
-            # Normalize Pressure 0-1 for heatmap intensity
-            max_p = df_g['GeoPressure_Total'].max()
-            df_g['Intensity'] = df_g['GeoPressure_Total'] / max_p if max_p > 0 else 0.5
-            
-            # 3. Construct Time Series Data
-            for _, row in df_g.iterrows():
-                monthly_points = []
-                intensity = row['Intensity']
-                
-                # Apply this month's "Pressure" to all competitor locations
-                for _, loc in df_m.iterrows():
-                    monthly_points.append([loc['Latitude'], loc['Longitude'], intensity])
-                
-                if monthly_points:
-                    heat_data.append(monthly_points)
-                    time_index.append(row['Month'].strftime('%Y-%m'))
-            
-            # 4. Render Map (Fixed Crash)
+            # Check Geo Data
+            if not data['df_geo'].empty and 'Month' in data['df_geo'].columns and 'GeoPressure_Total' in data['df_geo'].columns:
+                try:
+                    df_g = data['df_geo'].copy()
+                    df_g['Month'] = pd.to_datetime(df_g['Month'])
+                    df_g = df_g.sort_values('Month')
+                    
+                    max_p = df_g['GeoPressure_Total'].max()
+                    df_g['Intensity'] = df_g['GeoPressure_Total'] / max_p if max_p > 0 else 0.5
+                    
+                    for _, row in df_g.iterrows():
+                        monthly_points = []
+                        intensity = row['Intensity']
+                        # Add intensity to all competitor locations
+                        for _, loc in df_m.iterrows():
+                            monthly_points.append([loc['Latitude'], loc['Longitude'], intensity])
+                        
+                        if monthly_points:
+                            heat_data.append(monthly_points)
+                            time_index.append(row['Month'].strftime('%Y-%m'))
+                except:
+                    st.warning("Time-Series data corrupt. Showing static map.")
+
+            # 3. Render Map
+            # Center on average of valid points
             m = folium.Map(location=[df_m['Latitude'].mean(), df_m['Longitude'].mean()], zoom_start=13)
             
-            # Add Static Markers
+            # Static Markers
             for _, row in df_m.iterrows():
                 name_col = [c for c in df_m.columns if 'name' in c.lower()]
                 loc_name = str(row[name_col[0]]) if name_col else "Location"
@@ -237,7 +261,7 @@ with tabs[2]:
                     tooltip=loc_name
                 ).add_to(m)
 
-            # Only add HeatMapWithTime if data exists (Prevents TypeError crash)
+            # Time Player (Only if valid data exists)
             if heat_data and len(heat_data) > 0:
                 plugins.HeatMapWithTime(
                     heat_data,
@@ -248,12 +272,11 @@ with tabs[2]:
                 ).add_to(m)
             
             st_folium(m, width=800, height=500)
-            st.caption("Use the slider at the bottom of the map to view market pressure changes over time.")
             
         else:
-            st.warning("GeoPressure data missing columns 'Month' or 'GeoPressure_Total'")
+            st.error("Map Data exists but contains no valid Latitude/Longitude.")
     else:
-        st.warning("⚠️ Map or GeoPressure data missing.")
+        st.warning("⚠️ Map data missing.")
 
 # --- TAB 3: VOIDS ---
 with tabs[3]:
@@ -265,24 +288,13 @@ with tabs[3]:
     with col1:
         st.subheader("Suspicious Servers")
         if not data['df_servers'].empty:
-            # FORMATTED DATAFRAME
             st.dataframe(
                 data['df_servers'], 
                 hide_index=True,
                 column_config={
-                    "Void_Rate": st.column_config.NumberColumn(
-                        "Void Rate",
-                        help="Percentage of transactions voided",
-                        format="%.2f%%"  # <--- FIXED: Shows as Percentage
-                    ),
-                    "Void_Z_Score": st.column_config.NumberColumn(
-                        "Z-Score",
-                        format="%.2f"
-                    ),
-                    "Potential_Loss": st.column_config.NumberColumn(
-                        "Est. Loss",
-                        format="$%.2f"   # <--- FIXED: Shows as Currency
-                    )
+                    "Void_Rate": st.column_config.NumberColumn("Void Rate", format="%.2f%%"),
+                    "Void_Z_Score": st.column_config.NumberColumn("Z-Score", format="%.2f"),
+                    "Potential_Loss": st.column_config.NumberColumn("Est. Loss", format="$%.2f")
                 }
             )
         else:
