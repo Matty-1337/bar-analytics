@@ -38,30 +38,46 @@ def load_all_data():
         return df
 
     # --- A. LOAD MASTER ---
-    # Robust loader that tries every possible format
     data['df_master'] = pd.DataFrame()
+    
+    # Check 1: Master Parquet
     if os.path.exists('master_data.parquet'):
         try:
             data['df_master'] = pd.read_parquet('master_data.parquet')
-        except Exception as e:
-            errors.append(f"Parquet Load Error: {e}")
-    
-    # Fallback to CSV if Parquet failed or missing
+        except Exception as e_pq:
+            # Fallback: User might have renamed a CSV to .parquet without converting
+            try:
+                data['df_master'] = pd.read_csv('master_data.parquet', low_memory=False)
+            except:
+                errors.append(f"Parquet Load Error: {e_pq}")
+
+    # Check 2: Master CSV (Fallback if Parquet failed or didn't exist)
     if data['df_master'].empty and os.path.exists('master_data.csv'):
         try:
             data['df_master'] = pd.read_csv('master_data.csv', low_memory=False)
+            # If successful, clear previous errors since we recovered
+            errors = []
         except Exception as e:
             errors.append(f"CSV Load Error: {e}")
             
     if data['df_master'].empty and not errors:
-        errors.append("No Master Data File Found (master_data.parquet or master_data.csv)")
+        errors.append("No Master Data File Found (checked .parquet and .csv)")
 
     # Fix Master Data Types
     if not data['df_master'].empty:
         cols = data['df_master'].columns
-        if 'Date' in cols:
-            data['df_master']['Date'] = pd.to_datetime(data['df_master']['Date'], errors='coerce')
+        
+        # 1. Date Fix
+        date_col = None
+        if 'Date' in cols: date_col = 'Date'
+        elif 'date' in cols: date_col = 'date'
+        elif 'Time' in cols: date_col = 'Time'
+        
+        if date_col:
+            data['df_master']['Date'] = pd.to_datetime(data['df_master'][date_col], errors='coerce')
             data['df_master']['Month'] = data['df_master']['Date'].dt.to_period('M').astype(str)
+            
+        # 2. Numeric Fix
         data['df_master'] = clean_numeric(data['df_master'], ['Net Price', 'Qty'])
 
     # --- B. LOAD ANALYTICS FILES ---
@@ -94,7 +110,11 @@ def load_all_data():
     # --- C. PREPARE MONTHLY REVENUE ---
     if not data['df_master'].empty and 'Month' in data['df_master'].columns:
         clean_df = data['df_master']
+        # Filter Voids if column exists
         if 'is_void' in clean_df.columns:
+            # Ensure boolean
+            if clean_df['is_void'].dtype == 'object':
+                 clean_df['is_void'] = clean_df['is_void'].astype(str).str.lower().isin(['true', '1', 'yes'])
             clean_df = clean_df[~clean_df['is_void']]
         
         monthly_data = clean_df.groupby('Month')['Net Price'].sum().reset_index()
