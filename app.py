@@ -206,7 +206,7 @@ tabs = st.tabs([
 with tabs[0]:
     st.header("Revenue Forecast (24-Month Horizon)")
     
-    col_a, col_b = st.columns([2, 1])
+    col_a, col_b = st.columns([3, 1])
     
     with col_a:
         if not data['df_forecast'].empty:
@@ -214,6 +214,23 @@ with tabs[0]:
             if len(fc_data.columns) >= 1: fc_data.rename(columns={fc_data.columns[0]: 'Month'}, inplace=True)
             if len(fc_data.columns) >= 2: fc_data.rename(columns={fc_data.columns[1]: 'Revenue'}, inplace=True)
             fc_data['Type'] = 'Projection'
+            
+            # --- SCENARIO SLIDER ---
+            # Allows user to adjust the "Flat Line" to show potential growth
+            growth_rate = st.slider(
+                "📈 Scenario Planner: Projected Monthly Growth Rate (%)",
+                min_value=-5.0,
+                max_value=10.0,
+                value=0.0,
+                step=0.5,
+                help="Adjust this slider to simulate growth scenarios (e.g., +2% MoM) on top of the baseline model."
+            )
+            
+            # Apply Growth Rate
+            if growth_rate != 0:
+                # Compound growth formula: Revenue * (1 + rate)^months
+                months_out = np.arange(len(fc_data))
+                fc_data['Revenue'] = fc_data['Revenue'] * ((1 + growth_rate/100) ** months_out)
             
             combined_df = fc_data
             if not data['monthly_revenue'].empty:
@@ -228,7 +245,7 @@ with tabs[0]:
                     pass
 
             fig = px.line(combined_df, x='Month', y='Revenue', color='Type', 
-                          title="Revenue Trajectory: Historical vs. Projection", 
+                          title=f"Revenue Trajectory: Historical vs. Projection ({growth_rate}% Growth Scenario)", 
                           color_discrete_map={'Historical': 'gray', 'Projection': '#FF4B4B'},
                           markers=True)
             st.plotly_chart(fig, use_container_width=True)
@@ -236,7 +253,14 @@ with tabs[0]:
             st.warning("⚠️ Forecast data is empty or missing.")
 
     with col_b:
-        st.info("💡 **Analyst Insight:**\nThe red line represents the projected revenue trajectory. We utilize this to identify potential revenue dips before they happen.")
+        st.info("""
+        💡 **Analyst Insight:**
+        
+        The baseline model (0% slider) shows a conservative statistical projection based on historical stability.
+        
+        **Use the Scenario Planner** to visualize the impact of strategic changes (e.g., Marketing Push, Menu Optimization) on future revenue.
+        """)
+        
         if not data['df_metrics'].empty:
             st.write("### Statistical Accuracy")
             st.dataframe(
@@ -349,7 +373,9 @@ with tabs[2]:
             
             plugins.HeatMap(heat_points, radius=50, blur=30).add_to(m)
 
-            st_folium(m, width=900, height=700)
+            # USE DIRECT HTML TO PREVENT CRASH
+            map_html = m._repr_html_()
+            components.html(map_html, height=700)
             
         except Exception as e:
             st.error(f"Map Rendering Error: {e}")
