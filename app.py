@@ -121,6 +121,11 @@ def load_all_data():
     data['df_combo'] = load_safe('suspicious_combinations.csv')
     
     data['df_geo'] = clean_numeric(load_safe('geo_pressure.csv'), ['GeoPressure_Total'])
+    # Fix Geo Columns (Ensure Month exists)
+    if not data['df_geo'].empty:
+        cols = data['df_geo'].columns
+        if 'Date' in cols: data['df_geo'].rename(columns={'Date': 'Month'}, inplace=True)
+
     data['df_sentiment'] = clean_numeric(load_safe('sentiment.csv'), ['CX_Index', 'BestRegards_Revenue'])
 
     # --- C. PREPARE MONTHLY REVENUE ---
@@ -260,6 +265,12 @@ with tabs[1]:
 # --- TAB 2: COMPETITIVE INTELLIGENCE (3 MODELS) ---
 with tabs[2]:
     st.header("Competitive Intelligence Models")
+    st.markdown("We deployed three distinct models to evaluate market positioning:")
+    st.markdown("""
+    1.  **Map Data (Static):** Physical locations of competitors relative to Best Regards.
+    2.  **Competitor Impact Ranking:** Determining which competitors actively steal market share.
+    3.  **Geo-Pressure Model:** Measuring the density of competition over time (The "Heat").
+    """)
     
     if not data['df_map'].empty:
         # --- 1. DATA PREP ---
@@ -267,8 +278,7 @@ with tabs[2]:
         df_m = df_m.dropna(subset=['Latitude', 'Longitude'])
         
         # --- 2. LAYOUT ---
-        st.subheader("1. Static Map & 3. Geo-Pressure Time-Lapse")
-        st.caption("Use the slider at the bottom to visualize how 'Geo-Pressure' (Market Intensity) shifts over time.")
+        st.subheader("1. & 3. Geospatial Market Pressure (Time-Lapse Heatmap)")
         
         try:
             # Prepare Base Map
@@ -291,7 +301,9 @@ with tabs[2]:
             # Time Data Logic
             heat_data = []
             time_index = []
+            valid_time_data = False
             
+            # Check if GeoPressure data exists and is valid
             if not data['df_geo'].empty and 'Month' in data['df_geo'].columns and 'GeoPressure_Total' in data['df_geo'].columns:
                 try:
                     df_g = data['df_geo'].copy()
@@ -324,11 +336,16 @@ with tabs[2]:
                             max_opacity=0.6,
                             use_local_extrema=False
                         ).add_to(m)
+                        valid_time_data = True
                 except Exception as e:
-                    st.warning(f"Time-Lapse Data Warning: {e}")
+                    st.warning(f"Time-Lapse Data Error: {e}")
+
+            if valid_time_data:
+                st.caption("Use the slider at the bottom to visualize how 'Geo-Pressure' (Market Intensity) shifts over time.")
+            else:
+                st.warning("⚠️ Geo-Pressure Data Missing: Time-Lapse Slider will not appear. (Check 'geo_pressure.csv')")
 
             # RENDER: DIRECT HTML TO PREVENT CRASH
-            # This bypasses the st_folium list vs float error by rendering raw HTML
             map_html = m._repr_html_()
             components.html(map_html, height=500)
             
@@ -344,13 +361,16 @@ with tabs[2]:
         if 'Total_Revenue' in impact_df.columns:
             impact_df = impact_df.sort_values('Total_Revenue', ascending=False)
             
-            cols_to_show = ['Location Name', 'Total_Revenue', 'Distance_mi'] if 'Distance_mi' in impact_df.columns else ['Location Name', 'Total_Revenue']
+            # Format Revenue with Commas manually string for display
+            # Using basic string formatting to ensure commas are present
+            impact_df['Est. Annual Revenue'] = impact_df['Total_Revenue'].apply(lambda x: f"${x:,.0f}")
+            
+            cols_to_show = ['Location Name', 'Est. Annual Revenue', 'Distance_mi'] if 'Distance_mi' in impact_df.columns else ['Location Name', 'Est. Annual Revenue']
             
             st.dataframe(
                 impact_df[cols_to_show].head(10),
                 hide_index=True,
                 column_config={
-                    "Total_Revenue": st.column_config.NumberColumn("Est. Annual Revenue", format="$%d"),
                     "Distance_mi": st.column_config.NumberColumn("Distance (mi)", format="%.2f mi")
                 }
             )
