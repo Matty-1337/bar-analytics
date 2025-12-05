@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 import folium
 from folium import plugins
 from streamlit_folium import st_folium
+import streamlit.components.v1 as components
 import os
 
 # --- 1. PAGE CONFIGURATION ---
@@ -45,29 +46,24 @@ def load_all_data():
         try:
             data['df_master'] = pd.read_parquet('master_data.parquet')
         except Exception as e_pq:
-            # Fallback: User might have renamed a CSV to .parquet without converting
             try:
                 data['df_master'] = pd.read_csv('master_data.parquet', low_memory=False)
             except:
                 errors.append(f"Parquet Load Error: {e_pq}")
 
-    # Check 2: Master CSV (Fallback if Parquet failed or didn't exist)
+    # Check 2: Master CSV
     if data['df_master'].empty and os.path.exists('master_data.csv'):
         try:
             data['df_master'] = pd.read_csv('master_data.csv', low_memory=False)
-            # If successful, clear previous errors since we recovered
             errors = []
         except Exception as e:
             errors.append(f"CSV Load Error: {e}")
             
     if data['df_master'].empty and not errors:
-        errors.append("No Master Data File Found (checked .parquet and .csv)")
+        errors.append("No Master Data File Found")
 
-    # Fix Master Data Types
     if not data['df_master'].empty:
         cols = data['df_master'].columns
-        
-        # 1. Date Fix
         date_col = None
         if 'Date' in cols: date_col = 'Date'
         elif 'date' in cols: date_col = 'date'
@@ -77,42 +73,37 @@ def load_all_data():
             data['df_master']['Date'] = pd.to_datetime(data['df_master'][date_col], errors='coerce')
             data['df_master']['Month'] = data['df_master']['Date'].dt.to_period('M').astype(str)
             
-        # 2. Numeric Fix
         data['df_master'] = clean_numeric(data['df_master'], ['Net Price', 'Qty'])
 
     # --- B. LOAD ANALYTICS FILES ---
     data['df_forecast'] = clean_numeric(load_safe('forecast_values.csv'), ['Forecasted_Revenue'])
     data['df_metrics'] = load_safe('forecast_metrics.csv')
     
-    # Menu: Filter out Zeros immediately
     menu_raw = load_safe('menu_forensics.csv')
     menu_raw = clean_numeric(menu_raw, ['Qty_Sold', 'Total_Revenue', 'Item_Void_Rate'])
     data['df_menu'] = menu_raw[(menu_raw['Total_Revenue'] > 0) | (menu_raw['Qty_Sold'] > 0)]
 
-    # Map Data: Standardize Columns immediately
     map_raw = load_safe('map_data.csv')
     cols = map_raw.columns.str.lower()
     if 'latitude' in cols: map_raw.rename(columns={map_raw.columns[list(cols).index('latitude')]: 'Latitude'}, inplace=True)
     if 'longitude' in cols: map_raw.rename(columns={map_raw.columns[list(cols).index('longitude')]: 'Longitude'}, inplace=True)
     if 'location name' in cols: map_raw.rename(columns={map_raw.columns[list(cols).index('location name')]: 'Location Name'}, inplace=True)
     if 'total_revenue' in cols: map_raw.rename(columns={map_raw.columns[list(cols).index('total_revenue')]: 'Total_Revenue'}, inplace=True)
-    
     data['df_map'] = clean_numeric(map_raw, ['Latitude', 'Longitude', 'Total_Revenue'])
     
+    # Theft Detection Data
     data['df_servers'] = clean_numeric(load_safe('suspicious_servers.csv'), ['Void_Rate', 'Void_Z_Score', 'Potential_Loss'])
     data['df_voids_h'] = clean_numeric(load_safe('hourly_voids.csv'), ['Void_Rate', 'Hour_of_Day'])
     data['df_voids_d'] = clean_numeric(load_safe('daily_voids.csv'), ['Void_Rate'])
-    
     data['df_combo'] = load_safe('suspicious_combinations.csv')
+    
     data['df_geo'] = clean_numeric(load_safe('geo_pressure.csv'), ['GeoPressure_Total'])
     data['df_sentiment'] = clean_numeric(load_safe('sentiment.csv'), ['CX_Index', 'BestRegards_Revenue'])
 
     # --- C. PREPARE MONTHLY REVENUE ---
     if not data['df_master'].empty and 'Month' in data['df_master'].columns:
         clean_df = data['df_master']
-        # Filter Voids if column exists
         if 'is_void' in clean_df.columns:
-            # Ensure boolean
             if clean_df['is_void'].dtype == 'object':
                  clean_df['is_void'] = clean_df['is_void'].astype(str).str.lower().isin(['true', '1', 'yes'])
             clean_df = clean_df[~clean_df['is_void']]
@@ -170,7 +161,6 @@ with tabs[0]:
     with col_a:
         if not data['df_forecast'].empty:
             fc_data = data['df_forecast'].copy()
-            # Column Cleanup
             if len(fc_data.columns) >= 1: fc_data.rename(columns={fc_data.columns[0]: 'Month'}, inplace=True)
             if len(fc_data.columns) >= 2: fc_data.rename(columns={fc_data.columns[1]: 'Revenue'}, inplace=True)
             fc_data['Type'] = 'Projection'
@@ -253,54 +243,14 @@ with tabs[2]:
         df_m = df_m.dropna(subset=['Latitude', 'Longitude'])
         
         # --- 2. LAYOUT ---
-        # Interactive Map Section
         st.subheader("1. & 3. Geospatial Market Pressure (Time-Lapse Heatmap)")
         st.caption("Use the slider at the bottom to visualize how 'Geo-Pressure' (Market Intensity) shifts over time.")
         
-        # TRY/EXCEPT BLOCK FOR MAP RENDERING
         try:
-            # Setup Time Data
-            heat_data = []
-            time_index = []
-            valid_time_data = False
-            
-            if not data['df_geo'].empty and 'Month' in data['df_geo'].columns and 'GeoPressure_Total' in data['df_geo'].columns:
-                try:
-                    df_g = data['df_geo'].copy()
-                    df_g['Month'] = pd.to_datetime(df_g['Month'])
-                    df_g = df_g.sort_values('Month')
-                    
-                    max_p = df_g['GeoPressure_Total'].max()
-                    # Scale intensity 0-1
-                    df_g['Intensity'] = (df_g['GeoPressure_Total'] / max_p).astype(float) if max_p > 0 else 0.5
-                    
-                    for _, row in df_g.iterrows():
-                        monthly_points = []
-                        # Force intensity to simple float
-                        intensity = float(row['Intensity'])
-                        
-                        for _, loc in df_m.iterrows():
-                            # STRICT FLOAT CONVERSION [lat, lon, intensity]
-                            lat = float(loc['Latitude'])
-                            lon = float(loc['Longitude'])
-                            monthly_points.append([lat, lon, intensity])
-                        
-                        if monthly_points:
-                            heat_data.append(monthly_points)
-                            # Ensure time index is a simple list of strings
-                            time_index.append(str(row['Month'].strftime('%Y-%m')))
-                    
-                    valid_time_data = True
-                except Exception as e:
-                    st.warning(f"Time-Series calculation error: {e}")
-
-            # Render Map
-            # Force bounds based on static data
+            # Prepare Base Map
             min_lat, max_lat = df_m['Latitude'].min(), df_m['Latitude'].max()
             min_lon, max_lon = df_m['Longitude'].min(), df_m['Longitude'].max()
-            
             m = folium.Map(location=[df_m['Latitude'].mean(), df_m['Longitude'].mean()], zoom_start=13)
-            # Explicitly fit bounds to prevent auto-zoom crash
             m.fit_bounds([[min_lat, min_lon], [max_lat, max_lon]]) 
             
             # Static Markers
@@ -313,46 +263,63 @@ with tabs[2]:
                     tooltip=loc_name
                 ).add_to(m)
 
-            # Time Player
-            if valid_time_data and heat_data:
-                plugins.HeatMapWithTime(
-                    heat_data,
-                    index=time_index,
-                    auto_play=True,
-                    radius=50,
-                    max_opacity=0.6,
-                    use_local_extrema=False
-                ).add_to(m)
-            
-            st_folium(m, width=900, height=500, returned_objects=[])
+            # Time Data (Geo-Pressure)
+            if not data['df_geo'].empty and 'Month' in data['df_geo'].columns and 'GeoPressure_Total' in data['df_geo'].columns:
+                try:
+                    df_g = data['df_geo'].copy()
+                    df_g['Month'] = pd.to_datetime(df_g['Month'])
+                    df_g = df_g.sort_values('Month')
+                    
+                    max_p = df_g['GeoPressure_Total'].max()
+                    df_g['Intensity'] = (df_g['GeoPressure_Total'] / max_p).astype(float) if max_p > 0 else 0.5
+                    
+                    heat_data = []
+                    time_index = []
+                    
+                    for _, row in df_g.iterrows():
+                        monthly_points = []
+                        intensity = float(row['Intensity'])
+                        for _, loc in df_m.iterrows():
+                            # STRICT FLOAT CONVERSION [lat, lon, intensity]
+                            lat = float(loc['Latitude'])
+                            lon = float(loc['Longitude'])
+                            monthly_points.append([lat, lon, intensity])
+                        
+                        if monthly_points:
+                            heat_data.append(monthly_points)
+                            time_index.append(str(row['Month'].strftime('%Y-%m')))
+                    
+                    if heat_data:
+                        plugins.HeatMapWithTime(
+                            heat_data,
+                            index=time_index,
+                            auto_play=True,
+                            radius=50,
+                            max_opacity=0.6,
+                            use_local_extrema=False
+                        ).add_to(m)
+                except Exception as e:
+                    st.warning(f"Note: Showing static map due to data format issue ({e})")
+
+            # RENDER METHOD: DIRECT HTML (Avoids st_folium serialization crash)
+            map_html = m._repr_html_()
+            components.html(map_html, height=500)
             
         except Exception as e:
-            # FALLBACK STATIC MAP
-            st.error(f"Interactive Map Error: {e}. Loading Static Fallback.")
-            m_static = folium.Map(location=[df_m['Latitude'].mean(), df_m['Longitude'].mean()], zoom_start=13)
-            for _, row in df_m.iterrows():
-                folium.Marker([row['Latitude'], row['Longitude']]).add_to(m_static)
-            st_folium(m_static, width=900, height=500, returned_objects=[])
+            st.error(f"Map Rendering Error: {e}")
             
         # --- 3. IMPACT RANKINGS ---
         st.markdown("---")
         st.subheader("2. Competitor Impact Rankings")
-        st.markdown("""
-        **What this shows:**
-        We rank competitors not just by distance, but by estimated **Revenue Impact**. 
-        Competitors with high revenue that are geographically close exert the highest "Gravitational Pull" on your customers.
-        """)
+        st.markdown("**What this shows:** We rank competitors by their estimated Revenue Impact and Proximity.")
         
-        # Create Ranking Table
         impact_df = df_m.copy()
-        # Ensure we have revenue data
         if 'Total_Revenue' in impact_df.columns:
             impact_df = impact_df.sort_values('Total_Revenue', ascending=False)
-            impact_df = impact_df[['Location Name', 'Total_Revenue', 'Distance_mi'] if 'Distance_mi' in impact_df.columns else ['Location Name', 'Total_Revenue']]
+            cols_to_show = ['Location Name', 'Total_Revenue', 'Distance_mi'] if 'Distance_mi' in impact_df.columns else ['Location Name', 'Total_Revenue']
             
-            # Display Top 10
             st.dataframe(
-                impact_df.head(10),
+                impact_df[cols_to_show].head(10),
                 hide_index=True,
                 column_config={
                     "Total_Revenue": st.column_config.NumberColumn("Est. Annual Revenue", format="$%.0f"),
@@ -370,29 +337,37 @@ with tabs[3]:
     st.header("Operational Risk & Void Detection")
     st.markdown("💡 **Analyst Insight:** *High void rates indicate potential operational slippage. Servers with Z-Scores > 2.0 are statistically anomalous.*")
     
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("Suspicious Servers")
-        if not data['df_servers'].empty:
-            st.dataframe(
-                data['df_servers'], 
-                hide_index=True,
-                column_config={
-                    "Void_Rate": st.column_config.NumberColumn("Void Rate", format="%.2f%%"),
-                    "Void_Z_Score": st.column_config.NumberColumn("Z-Score", format="%.2f"),
-                    "Potential_Loss": st.column_config.NumberColumn("Est. Loss", format="$%.2f")
-                }
-            )
-        else:
-            st.info("No server alerts.")
+    # 1. SERVER BREAKDOWN (RESTORED FULL TABLE)
+    st.subheader("Employee Breakdown (Suspicious Servers)")
+    if not data['df_servers'].empty:
+        st.dataframe(
+            data['df_servers'], 
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                "Void_Rate": st.column_config.NumberColumn("Void Rate", format="%.2f%%"),
+                "Void_Z_Score": st.column_config.NumberColumn("Z-Score", format="%.2f"),
+                "Potential_Loss": st.column_config.NumberColumn("Est. Loss", format="$%.2f")
+            }
+        )
+    else:
+        st.info("No server alerts.")
             
-    with col2:
+    # 2. ADDITIONAL BREAKDOWNS
+    col1, col2 = st.columns(2)
+    with col1:
         st.subheader("High Risk Hours")
         if not data['df_voids_h'].empty:
             st.bar_chart(data['df_voids_h'].set_index('Hour_of_Day')['Void_Rate'])
         else:
             st.info("No hourly data.")
+            
+    with col2:
+        st.subheader("Suspicious Combinations (Server + Tab)")
+        if not data['df_combo'].empty:
+            st.dataframe(data['df_combo'], hide_index=True)
+        else:
+            st.info("No combination data.")
 
 # --- TAB 4: SENTIMENT ---
 with tabs[4]:
@@ -402,9 +377,7 @@ with tabs[4]:
     
     with col1:
         if not data['df_sentiment'].empty:
-            # DUAL AXIS CHART
             fig = go.Figure()
-
             fig.add_trace(go.Bar(
                 x=data['df_sentiment']['Month'],
                 y=data['df_sentiment']['BestRegards_Revenue'],
@@ -412,7 +385,6 @@ with tabs[4]:
                 marker_color='lightgreen',
                 opacity=0.6
             ))
-
             fig.add_trace(go.Scatter(
                 x=data['df_sentiment']['Month'],
                 y=data['df_sentiment']['CX_Index'],
@@ -420,7 +392,6 @@ with tabs[4]:
                 yaxis="y2",
                 line=dict(color='red', width=3)
             ))
-
             fig.update_layout(
                 title="Correlation: Revenue vs. Customer Experience",
                 xaxis_title="Month",
@@ -433,7 +404,6 @@ with tabs[4]:
                 ),
                 legend=dict(x=0, y=1.1, orientation="h")
             )
-
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.warning("⚠️ Sentiment data missing.")
@@ -441,11 +411,5 @@ with tabs[4]:
     with col2:
         st.info("""
         💡 **Analyst Insight:**
-        
-        **The "Lag Effect":**
-        Notice how the Red Line (Customer Experience) often moves *before* the Green Bars (Revenue).
-        
-        A drop in sentiment today typically correlates with a revenue drop **2-4 weeks later**.
-        
-        **Action:** Use the CX Index as a "Early Warning System" to correct service issues before they hit the bottom line.
+        **The "Lag Effect":** A drop in sentiment today typically correlates with a revenue drop **2-4 weeks later**.
         """)
