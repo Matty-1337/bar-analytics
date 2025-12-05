@@ -14,36 +14,45 @@ from scipy import stats
 
 st.set_page_config(page_title="Best Regards Analytics", page_icon="🍸", layout="wide", initial_sidebar_state="expanded")
 
+# Best Regards Color Scheme - Deep Green, Gold, White
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
 * {font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;}
 #MainMenu {visibility: hidden;} footer {visibility: hidden;}
-.stApp {background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);}
+
+/* Main Background - Deep Forest Green */
+.stApp {
+    background: linear-gradient(135deg, #1a2e1a 0%, #2d4a2d 50%, #1a3320 100%);
+}
+
 .block-container {padding-top: 2rem; padding-bottom: 2rem;}
 
+/* Glass Card Styling */
 .glass-card {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(20px);
-    border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    border: 1px solid rgba(212, 175, 55, 0.2);
     padding: 24px;
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
     transition: all 0.3s ease;
     height: 100%;
 }
 
 .glass-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 12px 48px 0 rgba(0, 0, 0, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 12px 48px 0 rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(212, 175, 55, 0.4);
 }
 
+/* Metric Cards */
 .metric-card-success, .metric-card-warning, .metric-card-danger, .metric-card-info {
     backdrop-filter: blur(20px);
-    border-radius: 20px;
-    padding: 28px 24px;
-    min-height: 160px;
+    border-radius: 16px;
+    padding: 24px 20px;
+    min-height: 150px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -55,54 +64,55 @@ st.markdown("""
 }
 
 .metric-card-success {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.15) 100%);
-    border: 1px solid rgba(16, 185, 129, 0.3);
-    box-shadow: 0 8px 32px 0 rgba(16, 185, 129, 0.2);
+    background: linear-gradient(135deg, rgba(45, 74, 45, 0.9) 0%, rgba(26, 51, 32, 0.9) 100%);
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
 }
 
 .metric-card-warning {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.15) 100%);
-    border: 1px solid rgba(245, 158, 11, 0.3);
-    box-shadow: 0 8px 32px 0 rgba(245, 158, 11, 0.2);
+    background: linear-gradient(135deg, rgba(139, 109, 32, 0.4) 0%, rgba(90, 70, 20, 0.4) 100%);
+    border: 1px solid rgba(212, 175, 55, 0.5);
+    box-shadow: 0 8px 32px 0 rgba(212, 175, 55, 0.15);
 }
 
 .metric-card-danger {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.15) 100%);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    box-shadow: 0 8px 32px 0 rgba(239, 68, 68, 0.2);
+    background: linear-gradient(135deg, rgba(120, 40, 40, 0.5) 0%, rgba(80, 25, 25, 0.5) 100%);
+    border: 1px solid rgba(200, 80, 80, 0.4);
+    box-shadow: 0 8px 32px 0 rgba(200, 80, 80, 0.15);
 }
 
 .metric-card-info {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.15) 100%);
-    border: 1px solid rgba(59, 130, 246, 0.3);
-    box-shadow: 0 8px 32px 0 rgba(59, 130, 246, 0.2);
+    background: linear-gradient(135deg, rgba(45, 74, 45, 0.9) 0%, rgba(26, 51, 32, 0.9) 100%);
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
 }
 
 .metric-label {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #d4af37;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.1em;
     margin-bottom: 8px;
 }
 
 .metric-value {
-    font-size: 2.5rem;
+    font-size: 2.25rem;
     font-weight: 700;
-    color: white;
+    color: #ffffff;
     line-height: 1.2;
     margin-bottom: 4px;
+    font-family: 'Playfair Display', serif;
 }
 
 .metric-subtitle {
-    font-size: 0.875rem;
-    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
     font-weight: 400;
 }
 
 .metric-change {
-    font-size: 0.875rem;
+    font-size: 0.85rem;
     font-weight: 600;
     padding: 4px 12px;
     border-radius: 8px;
@@ -111,74 +121,195 @@ st.markdown("""
 }
 
 .metric-change-positive {
-    background: rgba(16, 185, 129, 0.2);
-    color: #10b981;
+    background: rgba(76, 175, 80, 0.25);
+    color: #81c784;
 }
 
 .metric-change-negative {
-    background: rgba(239, 68, 68, 0.2);
-    color: #ef4444;
+    background: rgba(239, 83, 80, 0.25);
+    color: #ef5350;
 }
 
+/* Tab Styling - Green/Gold Theme */
 .stTabs [data-baseweb="tab-list"] {
-    gap: 12px;
-    background: rgba(255, 255, 255, 0.05);
+    gap: 8px;
+    background: rgba(26, 46, 26, 0.8);
     backdrop-filter: blur(20px);
     padding: 8px;
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    border: 1px solid rgba(212, 175, 55, 0.3);
 }
 
 .stTabs [data-baseweb="tab"] {
-    height: 50px;
-    padding: 0 24px;
+    height: 46px;
+    padding: 0 20px;
     background: transparent;
-    border-radius: 12px;
-    color: rgba(255, 255, 255, 0.7);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.8);
     font-weight: 500;
     transition: all 0.3s ease;
 }
 
 .stTabs [data-baseweb="tab"]:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
+    background: rgba(212, 175, 55, 0.15);
+    color: #ffffff;
 }
 
 .stTabs [aria-selected="true"] {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+    background: linear-gradient(135deg, #2d4a2d 0%, #3d5c3d 100%);
+    color: #d4af37 !important;
+    border: 1px solid rgba(212, 175, 55, 0.5);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
-h1 {color: white; font-weight: 700; font-size: 2.5rem; letter-spacing: -0.02em;}
-h2 {color: white; font-weight: 600; font-size: 1.75rem; margin-top: 2rem; letter-spacing: -0.01em;}
-h3 {color: rgba(255, 255, 255, 0.9); font-weight: 600; font-size: 1.25rem;}
-p {color: rgba(255, 255, 255, 0.8); line-height: 1.6;}
+/* Headers - White with Gold Accent */
+h1 {
+    color: #ffffff !important;
+    font-weight: 700;
+    font-size: 2.5rem;
+    letter-spacing: -0.02em;
+    font-family: 'Playfair Display', serif;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
 
+h2 {
+    color: #ffffff !important;
+    font-weight: 600;
+    font-size: 1.75rem;
+    margin-top: 1.5rem;
+    letter-spacing: -0.01em;
+    font-family: 'Playfair Display', serif;
+}
+
+h3 {
+    color: #ffffff !important;
+    font-weight: 600;
+    font-size: 1.25rem;
+}
+
+p, span, label {
+    color: rgba(255, 255, 255, 0.9) !important;
+    line-height: 1.6;
+}
+
+/* Subheader fix */
+.stMarkdown h2, .stMarkdown h3, [data-testid="stHeader"] {
+    color: #ffffff !important;
+}
+
+div[data-testid="stMarkdownContainer"] h1,
+div[data-testid="stMarkdownContainer"] h2,
+div[data-testid="stMarkdownContainer"] h3 {
+    color: #ffffff !important;
+}
+
+/* Sidebar Styling */
 [data-testid="stSidebar"] {
-    background: linear-gradient(180deg, rgba(15, 12, 41, 0.95) 0%, rgba(48, 43, 99, 0.95) 100%);
-    backdrop-filter: blur(20px);
-    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    background: linear-gradient(180deg, #1a2e1a 0%, #2d4a2d 50%, #1a3320 100%);
+    border-right: 1px solid rgba(212, 175, 55, 0.3);
 }
 
-[data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {color: white;}
-[data-testid="stMetricValue"] {color: white; font-size: 1.75rem; font-weight: 600;}
-[data-testid="stMetricLabel"] {color: rgba(255, 255, 255, 0.7); font-weight: 500;}
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3,
+[data-testid="stSidebar"] .stMarkdown h1,
+[data-testid="stSidebar"] .stMarkdown h2,
+[data-testid="stSidebar"] .stMarkdown h3 {
+    color: #d4af37 !important;
+    font-family: 'Playfair Display', serif;
+}
 
-.streamlit-expanderHeader {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(20px);
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: white;
+[data-testid="stSidebar"] p,
+[data-testid="stSidebar"] span,
+[data-testid="stSidebar"] label {
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+
+[data-testid="stMetricValue"] {
+    color: #ffffff !important;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+[data-testid="stMetricLabel"] {
+    color: rgba(255, 255, 255, 0.8) !important;
     font-weight: 500;
 }
 
-.stAlert {
-    background: rgba(255, 255, 255, 0.05);
+[data-testid="stMetricDelta"] {
+    color: #81c784 !important;
+}
+
+/* Success/Info/Warning/Error boxes */
+.stSuccess, .stInfo, .stWarning, .stError {
+    background: rgba(45, 74, 45, 0.6) !important;
+    border: 1px solid rgba(212, 175, 55, 0.3) !important;
+    border-radius: 8px;
+}
+
+.stSuccess > div, .stInfo > div, .stWarning > div, .stError > div {
+    color: #ffffff !important;
+}
+
+/* Expander styling */
+.streamlit-expanderHeader {
+    background: rgba(45, 74, 45, 0.6);
     backdrop-filter: blur(20px);
-    border-radius: 12px;
-    color: white;
+    border-radius: 8px;
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    color: #ffffff !important;
+    font-weight: 500;
+}
+
+.streamlit-expanderContent {
+    background: rgba(26, 46, 26, 0.6);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+}
+
+/* Slider styling */
+.stSlider > div > div {
+    background: rgba(212, 175, 55, 0.3) !important;
+}
+
+.stSlider > div > div > div {
+    background: #d4af37 !important;
+}
+
+/* Select box */
+.stSelectbox > div > div {
+    background: rgba(45, 74, 45, 0.8) !important;
+    border: 1px solid rgba(212, 175, 55, 0.3) !important;
+    color: #ffffff !important;
+}
+
+/* Button styling */
+.stButton > button {
+    background: linear-gradient(135deg, #2d4a2d 0%, #3d5c3d 100%);
+    color: #d4af37;
+    border: 1px solid rgba(212, 175, 55, 0.5);
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.stButton > button:hover {
+    background: linear-gradient(135deg, #3d5c3d 0%, #4d6c4d 100%);
+    border-color: #d4af37;
+    color: #ffffff;
+}
+
+/* DataFrame styling */
+.stDataFrame {
+    background: rgba(26, 46, 26, 0.6);
+    border-radius: 8px;
+    border: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+/* Plotly chart backgrounds */
+.js-plotly-plot .plotly .main-svg {
+    background: transparent !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -325,12 +456,12 @@ def calculate_kpis(data):
     
     if not data['df_servers'].empty and 'Potential_Loss' in data['df_servers'].columns:
         kpis['estimated_theft'] = data['df_servers']['Potential_Loss'].sum()
-        kpis['high_risk_servers'] = len(data['df_servers'][data['df_servers']['Void_Z_Score'] > 2.0])
+        kpis['high_risk_servers'] = len(data['df_servers'][data['df_servers']['Void_Z_Score'] > 2.0]) if 'Void_Z_Score' in data['df_servers'].columns else 0
     else:
         kpis['estimated_theft'] = 0
         kpis['high_risk_servers'] = 0
     
-    if not data['df_menu'].empty:
+    if not data['df_menu'].empty and 'BCG_Matrix' in data['df_menu'].columns:
         stars = data['df_menu'][data['df_menu']['BCG_Matrix'] == 'Star']
         dogs = data['df_menu'][data['df_menu']['BCG_Matrix'] == 'Dog']
         kpis['star_items'] = len(stars)
@@ -348,31 +479,62 @@ def calculate_kpis(data):
     
     return kpis
 
+# Chart color scheme - Green/Gold theme
+CHART_COLORS = {
+    'primary': '#d4af37',      # Gold
+    'secondary': '#4a7c4a',    # Forest Green
+    'success': '#81c784',      # Light Green
+    'danger': '#ef5350',       # Red
+    'warning': '#ffb74d',      # Orange
+    'info': '#64b5f6',         # Blue
+    'background': 'rgba(26, 46, 26, 0.8)',
+    'grid': 'rgba(212, 175, 55, 0.15)',
+    'text': '#ffffff'
+}
+
+def create_chart_layout(title, height=400):
+    """Standard chart layout with Best Regards theme"""
+    return dict(
+        title=dict(text=title, font=dict(color='#ffffff', size=16, family='Playfair Display')),
+        template='plotly_dark',
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(26, 46, 26, 0.4)',
+        font=dict(color='#ffffff', family='Inter'),
+        height=height,
+        margin=dict(t=50, b=50, l=50, r=50),
+        xaxis=dict(gridcolor=CHART_COLORS['grid'], zerolinecolor=CHART_COLORS['grid']),
+        yaxis=dict(gridcolor=CHART_COLORS['grid'], zerolinecolor=CHART_COLORS['grid']),
+        legend=dict(
+            bgcolor='rgba(26, 46, 26, 0.8)',
+            bordercolor='rgba(212, 175, 55, 0.3)',
+            borderwidth=1
+        )
+    )
+
 data, load_errors = load_all_data()
 kpis = calculate_kpis(data)
 
+# Sidebar
 with st.sidebar:
-    st.markdown("<h1 style='text-align: center;'>Best Regards</h1>", unsafe_allow_html=True)
-    st.markdown("<h3 style='text-align: center; color: rgba(255,255,255,0.7); font-weight: 400;'>Executive Intelligence Portal</h3>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; color: #d4af37 !important; font-family: Playfair Display, serif;'>Best Regards</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: rgba(255,255,255,0.7) !important; font-size: 0.9rem;'>Executive Intelligence Portal</p>", unsafe_allow_html=True)
     st.markdown("---")
     
-    st.subheader("System Status")
-    if not data['df_master'].empty:
-        st.success("Master Data: Active")
-    elif not data['monthly_revenue'].empty:
-        st.success("Master Data: Active")
+    st.markdown("<h3 style='color: #d4af37 !important;'>System Status</h3>", unsafe_allow_html=True)
+    if not data['df_master'].empty or not data['monthly_revenue'].empty:
+        st.success("✓ Master Data: Active")
     else:
-        st.error("Master Data: Missing")
+        st.error("✗ Master Data: Missing")
     
     if not data['df_forecast'].empty:
-        st.success("Forecast Model: Active")
+        st.success("✓ Forecast Model: Active")
     if not data['df_menu'].empty:
-        st.success("Menu Analytics: Active")
+        st.success("✓ Menu Analytics: Active")
     if not data['df_sentiment'].empty:
-        st.success("Sentiment Engine: Active")
+        st.success("✓ Sentiment Engine: Active")
     
     st.markdown("---")
-    st.subheader("Key Metrics")
+    st.markdown("<h3 style='color: #d4af37 !important;'>Key Metrics</h3>", unsafe_allow_html=True)
     st.metric("Avg Monthly Revenue", f"${kpis['avg_monthly_revenue']:,.0f}", f"{kpis['revenue_change']:+.1f}%")
     st.metric("Est. Monthly Loss", f"${kpis['estimated_theft']:,.0f}")
     st.metric("High-Risk Staff", f"{kpis['high_risk_servers']}")
@@ -381,10 +543,12 @@ with st.sidebar:
     st.markdown("---")
     st.caption("Data Current: " + datetime.now().strftime("%B %d, %Y"))
 
-st.title("Best Regards Business Intelligence Dashboard")
-st.markdown("### Comprehensive Analytics: Revenue Forecasting, Menu Optimization, Competitive Analysis & Risk Management")
+# Main Title
+st.markdown("<h1 style='color: #ffffff !important;'>Best Regards Business Intelligence Dashboard</h1>", unsafe_allow_html=True)
+st.markdown("<p style='font-size: 1.1rem; color: rgba(255,255,255,0.8) !important;'>Comprehensive Analytics: Revenue Forecasting, Menu Optimization, Competitive Analysis & Risk Management</p>", unsafe_allow_html=True)
 st.markdown("---")
 
+# KPI Cards
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
@@ -437,17 +601,18 @@ with col4:
 
 st.markdown("---")
 
-tabs = st.tabs(["Revenue Forecast", "Menu Intelligence", "Competitive Landscape", "Risk Detection", "Sentiment Analysis", "Executive Summary"])
+# Tabs
+tabs = st.tabs(["📈 Revenue Forecast", "🍸 Menu Intelligence", "🗺️ Competitive Landscape", "⚠️ Risk Detection", "😊 Sentiment Analysis", "📋 Executive Summary"])
 
 # ============================================================================
 # TAB 0: REVENUE FORECAST
 # ============================================================================
 with tabs[0]:
-    st.header("Revenue Forecasting & Scenario Planning")
+    st.markdown("<h2 style='color: #ffffff !important;'>Revenue Forecasting & Scenario Planning</h2>", unsafe_allow_html=True)
     
     if not data['monthly_revenue'].empty or not data['df_forecast'].empty:
         # Scenario Planning Controls
-        st.subheader("Scenario Planning")
+        st.markdown("<h3 style='color: #ffffff !important;'>Scenario Planning</h3>", unsafe_allow_html=True)
         col_s1, col_s2, col_s3 = st.columns(3)
         
         with col_s1:
@@ -481,13 +646,11 @@ with tabs[0]:
             if 'Month' in forecast_df.columns:
                 forecast_df = forecast_df.rename(columns={'Forecasted_Revenue': 'Revenue'})
                 forecast_df['Type'] = 'Forecast'
-                # Apply scenario adjustments
                 base_adjustment = (1 + growth_rate/100) * seasonality_factor * shock_multiplier
                 forecast_df['Revenue'] = forecast_df['Revenue'] * base_adjustment
                 combined_df = pd.concat([combined_df, forecast_df[['Month', 'Revenue', 'Type']]], ignore_index=True)
         
         if combined_df.empty:
-            # Generate sample data for demonstration
             months = pd.date_range(start='2024-01', periods=12, freq='M').strftime('%Y-%m').tolist()
             base_revenue = [280000, 295000, 310000, 305000, 320000, 335000, 340000, 355000, 316058, 330000, 345000, 360000]
             combined_df = pd.DataFrame({
@@ -496,7 +659,7 @@ with tabs[0]:
                 'Type': ['Historical']*9 + ['Forecast']*3
             })
         
-        # Create main revenue chart
+        # Charts
         col_chart1, col_chart2 = st.columns([2, 1])
         
         with col_chart1:
@@ -509,10 +672,10 @@ with tabs[0]:
                     y=hist_data['Revenue'],
                     mode='lines+markers',
                     name='Historical Revenue',
-                    line=dict(color='#10b981', width=3),
-                    marker=dict(size=8, color='#10b981'),
+                    line=dict(color=CHART_COLORS['success'], width=3),
+                    marker=dict(size=8, color=CHART_COLORS['success']),
                     fill='tozeroy',
-                    fillcolor='rgba(16, 185, 129, 0.1)'
+                    fillcolor='rgba(129, 199, 132, 0.15)'
                 ))
             
             forecast_data = combined_df[combined_df['Type'] == 'Forecast']
@@ -522,95 +685,56 @@ with tabs[0]:
                     y=forecast_data['Revenue'],
                     mode='lines+markers',
                     name='Forecasted Revenue',
-                    line=dict(color='#667eea', width=3, dash='dash'),
-                    marker=dict(size=8, color='#667eea', symbol='diamond')
+                    line=dict(color=CHART_COLORS['primary'], width=3, dash='dash'),
+                    marker=dict(size=8, color=CHART_COLORS['primary'], symbol='diamond')
                 ))
                 
-                # Add confidence bands
                 upper_band = forecast_data['Revenue'] * 1.15
                 lower_band = forecast_data['Revenue'] * 0.85
                 
                 fig_revenue.add_trace(go.Scatter(
-                    x=forecast_data['Month'],
-                    y=upper_band,
-                    mode='lines',
-                    name='Upper Bound (95% CI)',
-                    line=dict(color='rgba(102, 126, 234, 0.3)', width=1),
-                    showlegend=False
+                    x=forecast_data['Month'], y=upper_band, mode='lines',
+                    line=dict(color='rgba(212, 175, 55, 0.3)', width=1), showlegend=False
                 ))
-                
                 fig_revenue.add_trace(go.Scatter(
-                    x=forecast_data['Month'],
-                    y=lower_band,
-                    mode='lines',
-                    name='Lower Bound (95% CI)',
-                    line=dict(color='rgba(102, 126, 234, 0.3)', width=1),
-                    fill='tonexty',
-                    fillcolor='rgba(102, 126, 234, 0.1)',
-                    showlegend=False
+                    x=forecast_data['Month'], y=lower_band, mode='lines',
+                    line=dict(color='rgba(212, 175, 55, 0.3)', width=1),
+                    fill='tonexty', fillcolor='rgba(212, 175, 55, 0.1)', showlegend=False
                 ))
             
+            fig_revenue.update_layout(**create_chart_layout('Monthly Revenue Trend & Forecast', 450))
             fig_revenue.update_layout(
-                title='Monthly Revenue Trend & Forecast',
                 xaxis_title='Month',
                 yaxis_title='Revenue ($)',
-                template='plotly_dark',
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='white'),
-                height=450,
                 hovermode='x unified',
                 legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1)
             )
-            fig_revenue.update_xaxes(gridcolor='rgba(255,255,255,0.1)')
-            fig_revenue.update_yaxes(gridcolor='rgba(255,255,255,0.1)', tickprefix='$', tickformat=',')
-            
+            fig_revenue.update_yaxes(tickprefix='$', tickformat=',')
             st.plotly_chart(fig_revenue, use_container_width=True)
         
         with col_chart2:
-            # Revenue breakdown pie chart
             if not data['df_menu'].empty and 'Category' in data['df_menu'].columns:
                 category_revenue = data['df_menu'].groupby('Category')['Total_Revenue'].sum().reset_index()
                 category_revenue = category_revenue.nlargest(6, 'Total_Revenue')
                 
                 fig_pie = px.pie(
-                    category_revenue,
-                    values='Total_Revenue',
-                    names='Category',
-                    title='Revenue by Category',
-                    color_discrete_sequence=px.colors.sequential.Purples_r
+                    category_revenue, values='Total_Revenue', names='Category',
+                    color_discrete_sequence=['#d4af37', '#4a7c4a', '#81c784', '#2d4a2d', '#c9a227', '#6b8e6b']
                 )
-                fig_pie.update_layout(
-                    template='plotly_dark',
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    font=dict(color='white'),
-                    height=450,
-                    showlegend=True,
-                    legend=dict(font=dict(size=10))
-                )
-                fig_pie.update_traces(textposition='inside', textinfo='percent+label')
-                st.plotly_chart(fig_pie, use_container_width=True)
             else:
-                # Sample category breakdown
                 categories = ['Cocktails', 'Wine', 'Beer', 'Spirits', 'Food', 'Other']
                 values = [35, 25, 15, 12, 8, 5]
                 fig_pie = px.pie(
-                    values=values,
-                    names=categories,
-                    title='Revenue by Category',
-                    color_discrete_sequence=px.colors.sequential.Purples_r
+                    values=values, names=categories,
+                    color_discrete_sequence=['#d4af37', '#4a7c4a', '#81c784', '#2d4a2d', '#c9a227', '#6b8e6b']
                 )
-                fig_pie.update_layout(
-                    template='plotly_dark',
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    font=dict(color='white'),
-                    height=450
-                )
-                st.plotly_chart(fig_pie, use_container_width=True)
+            
+            fig_pie.update_layout(**create_chart_layout('Revenue by Category', 450))
+            fig_pie.update_traces(textposition='inside', textinfo='percent+label', textfont=dict(color='white'))
+            st.plotly_chart(fig_pie, use_container_width=True)
         
         # Forecast metrics
-        st.subheader("Forecast Metrics")
+        st.markdown("<h3 style='color: #ffffff !important;'>Forecast Metrics</h3>", unsafe_allow_html=True)
         met_col1, met_col2, met_col3, met_col4 = st.columns(4)
         
         if not forecast_data.empty:
@@ -618,9 +742,7 @@ with tabs[0]:
             projected_avg = forecast_data['Revenue'].mean()
             projected_growth = ((forecast_data['Revenue'].iloc[-1] / forecast_data['Revenue'].iloc[0]) - 1) * 100 if len(forecast_data) > 1 else 0
         else:
-            projected_total = 0
-            projected_avg = 0
-            projected_growth = 0
+            projected_total = projected_avg = projected_growth = 0
         
         with met_col1:
             st.metric("Projected Q Total", f"${projected_total:,.0f}")
@@ -629,42 +751,22 @@ with tabs[0]:
         with met_col3:
             st.metric("Expected Growth", f"{projected_growth:+.1f}%")
         with met_col4:
-            if not data['df_metrics'].empty and 'MAPE' in data['df_metrics'].columns:
-                mape = data['df_metrics']['MAPE'].iloc[0]
-            else:
-                mape = 8.5
+            mape = data['df_metrics']['MAPE'].iloc[0] if not data['df_metrics'].empty and 'MAPE' in data['df_metrics'].columns else 8.5
             st.metric("Forecast Accuracy (MAPE)", f"{mape:.1f}%")
         
         # Month-over-month analysis
-        st.subheader("Month-over-Month Analysis")
+        st.markdown("<h3 style='color: #ffffff !important;'>Month-over-Month Analysis</h3>", unsafe_allow_html=True)
         if not combined_df.empty and len(combined_df) > 1:
             mom_df = combined_df.copy()
             mom_df['MoM_Change'] = mom_df['Revenue'].pct_change() * 100
             mom_df['MoM_Change'] = mom_df['MoM_Change'].fillna(0)
             
             fig_mom = go.Figure()
-            colors = ['#10b981' if x >= 0 else '#ef4444' for x in mom_df['MoM_Change']]
+            colors = [CHART_COLORS['success'] if x >= 0 else CHART_COLORS['danger'] for x in mom_df['MoM_Change']]
             
-            fig_mom.add_trace(go.Bar(
-                x=mom_df['Month'],
-                y=mom_df['MoM_Change'],
-                marker_color=colors,
-                name='MoM Change %'
-            ))
-            
-            fig_mom.update_layout(
-                title='Month-over-Month Revenue Change',
-                xaxis_title='Month',
-                yaxis_title='Change (%)',
-                template='plotly_dark',
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='white'),
-                height=300
-            )
-            fig_mom.update_xaxes(gridcolor='rgba(255,255,255,0.1)')
-            fig_mom.update_yaxes(gridcolor='rgba(255,255,255,0.1)')
-            
+            fig_mom.add_trace(go.Bar(x=mom_df['Month'], y=mom_df['MoM_Change'], marker_color=colors, name='MoM Change %'))
+            fig_mom.update_layout(**create_chart_layout('Month-over-Month Revenue Change', 300))
+            fig_mom.update_layout(xaxis_title='Month', yaxis_title='Change (%)')
             st.plotly_chart(fig_mom, use_container_width=True)
     else:
         st.warning("No revenue or forecast data available. Please ensure data files are present.")
@@ -673,103 +775,64 @@ with tabs[0]:
 # TAB 1: MENU INTELLIGENCE
 # ============================================================================
 with tabs[1]:
-    st.header("Menu Intelligence & Optimization Matrix")
+    st.markdown("<h2 style='color: #ffffff !important;'>Menu Intelligence & Optimization Matrix</h2>", unsafe_allow_html=True)
     
     if not data['df_menu'].empty:
-        # BCG Matrix Overview
         col_bcg1, col_bcg2 = st.columns([2, 1])
         
         with col_bcg1:
-            # BCG Matrix Scatter Plot
-            if 'BCG_Matrix' in data['df_menu'].columns:
+            if 'BCG_Matrix' in data['df_menu'].columns and 'Qty_Sold' in data['df_menu'].columns and 'Total_Revenue' in data['df_menu'].columns:
                 fig_bcg = px.scatter(
-                    data['df_menu'],
-                    x='Qty_Sold',
-                    y='Total_Revenue',
-                    color='BCG_Matrix',
-                    size='Total_Revenue',
-                    hover_name='Item' if 'Item' in data['df_menu'].columns else None,
-                    color_discrete_map={
-                        'Star': '#10b981',
-                        'Cash Cow': '#3b82f6',
-                        'Question Mark': '#f59e0b',
-                        'Dog': '#ef4444'
-                    },
-                    title='BCG Matrix: Menu Item Performance'
+                    data['df_menu'], x='Qty_Sold', y='Total_Revenue', color='BCG_Matrix',
+                    size='Total_Revenue', hover_name='Item' if 'Item' in data['df_menu'].columns else None,
+                    color_discrete_map={'Star': '#d4af37', 'Cash Cow': '#4a7c4a', 'Question Mark': '#ffb74d', 'Dog': '#ef5350'}
                 )
-                
-                fig_bcg.update_layout(
-                    template='plotly_dark',
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    font=dict(color='white'),
-                    height=500,
-                    xaxis_title='Quantity Sold (Market Share)',
-                    yaxis_title='Total Revenue (Growth Rate)'
-                )
-                fig_bcg.update_xaxes(gridcolor='rgba(255,255,255,0.1)')
-                fig_bcg.update_yaxes(gridcolor='rgba(255,255,255,0.1)', tickprefix='$', tickformat=',')
-                
+                fig_bcg.update_layout(**create_chart_layout('BCG Matrix: Menu Item Performance', 500))
+                fig_bcg.update_layout(xaxis_title='Quantity Sold (Market Share)', yaxis_title='Total Revenue (Growth Rate)')
+                fig_bcg.update_yaxes(tickprefix='$', tickformat=',')
                 st.plotly_chart(fig_bcg, use_container_width=True)
+            else:
+                st.info("BCG Matrix data not available. Showing revenue analysis instead.")
+                if 'Total_Revenue' in data['df_menu'].columns:
+                    top_items = data['df_menu'].nlargest(15, 'Total_Revenue')
+                    fig_bar = px.bar(top_items, x='Item' if 'Item' in top_items.columns else top_items.index, 
+                                     y='Total_Revenue', color='Total_Revenue', color_continuous_scale=['#2d4a2d', '#d4af37'])
+                    fig_bar.update_layout(**create_chart_layout('Top Menu Items by Revenue', 500))
+                    st.plotly_chart(fig_bar, use_container_width=True)
         
         with col_bcg2:
-            # BCG Category counts
             if 'BCG_Matrix' in data['df_menu'].columns:
                 bcg_counts = data['df_menu']['BCG_Matrix'].value_counts()
-                
                 fig_bcg_pie = px.pie(
-                    values=bcg_counts.values,
-                    names=bcg_counts.index,
-                    title='Item Distribution by BCG Category',
+                    values=bcg_counts.values, names=bcg_counts.index,
                     color=bcg_counts.index,
-                    color_discrete_map={
-                        'Star': '#10b981',
-                        'Cash Cow': '#3b82f6',
-                        'Question Mark': '#f59e0b',
-                        'Dog': '#ef4444'
-                    }
+                    color_discrete_map={'Star': '#d4af37', 'Cash Cow': '#4a7c4a', 'Question Mark': '#ffb74d', 'Dog': '#ef5350'}
                 )
-                fig_bcg_pie.update_layout(
-                    template='plotly_dark',
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    font=dict(color='white'),
-                    height=500
-                )
+                fig_bcg_pie.update_layout(**create_chart_layout('Item Distribution by BCG Category', 500))
+                fig_bcg_pie.update_traces(textposition='inside', textinfo='percent+label', textfont=dict(color='white'))
                 st.plotly_chart(fig_bcg_pie, use_container_width=True)
         
         st.markdown("---")
         
-        # Top Performers and Underperformers
         col_top, col_bottom = st.columns(2)
         
         with col_top:
-            st.subheader("⭐ Top Performing Items")
-            top_items = data['df_menu'].nlargest(10, 'Total_Revenue')
-            
-            fig_top = go.Figure(go.Bar(
-                x=top_items['Total_Revenue'],
-                y=top_items['Item'] if 'Item' in top_items.columns else top_items.index,
-                orientation='h',
-                marker=dict(
-                    color=top_items['Total_Revenue'],
-                    colorscale='Greens'
-                )
-            ))
-            fig_top.update_layout(
-                title='Top 10 Revenue Generators',
-                template='plotly_dark',
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='white'),
-                height=400,
-                yaxis=dict(autorange='reversed'),
-                xaxis_title='Revenue ($)'
-            )
-            fig_top.update_xaxes(gridcolor='rgba(255,255,255,0.1)', tickprefix='$', tickformat=',')
-            st.plotly_chart(fig_top, use_container_width=True)
+            st.markdown("<h3 style='color: #ffffff !important;'>⭐ Top Performing Items</h3>", unsafe_allow_html=True)
+            if 'Total_Revenue' in data['df_menu'].columns:
+                top_items = data['df_menu'].nlargest(10, 'Total_Revenue')
+                fig_top = go.Figure(go.Bar(
+                    x=top_items['Total_Revenue'],
+                    y=top_items['Item'] if 'Item' in top_items.columns else top_items.index,
+                    orientation='h',
+                    marker=dict(color=top_items['Total_Revenue'], colorscale=[[0, '#2d4a2d'], [1, '#d4af37']])
+                ))
+                fig_top.update_layout(**create_chart_layout('Top 10 Revenue Generators', 400))
+                fig_top.update_layout(yaxis=dict(autorange='reversed'), xaxis_title='Revenue ($)')
+                fig_top.update_xaxes(tickprefix='$', tickformat=',')
+                st.plotly_chart(fig_top, use_container_width=True)
         
         with col_bottom:
-            st.subheader("⚠️ Items Requiring Attention")
+            st.markdown("<h3 style='color: #ffffff !important;'>⚠️ Items Requiring Attention</h3>", unsafe_allow_html=True)
             if 'BCG_Matrix' in data['df_menu'].columns:
                 dogs = data['df_menu'][data['df_menu']['BCG_Matrix'] == 'Dog'].nlargest(10, 'Total_Revenue')
                 if dogs.empty:
@@ -777,61 +840,22 @@ with tabs[1]:
             else:
                 dogs = data['df_menu'].nsmallest(10, 'Total_Revenue')
             
-            fig_dogs = go.Figure(go.Bar(
-                x=dogs['Total_Revenue'],
-                y=dogs['Item'] if 'Item' in dogs.columns else dogs.index,
-                orientation='h',
-                marker=dict(
-                    color=dogs['Total_Revenue'],
-                    colorscale='Reds_r'
-                )
-            ))
-            fig_dogs.update_layout(
-                title='Underperforming Items (Consider Removal)',
-                template='plotly_dark',
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='white'),
-                height=400,
-                yaxis=dict(autorange='reversed'),
-                xaxis_title='Revenue ($)'
-            )
-            fig_dogs.update_xaxes(gridcolor='rgba(255,255,255,0.1)', tickprefix='$', tickformat=',')
-            st.plotly_chart(fig_dogs, use_container_width=True)
+            if 'Total_Revenue' in dogs.columns:
+                fig_dogs = go.Figure(go.Bar(
+                    x=dogs['Total_Revenue'],
+                    y=dogs['Item'] if 'Item' in dogs.columns else dogs.index,
+                    orientation='h',
+                    marker=dict(color=dogs['Total_Revenue'], colorscale=[[0, '#ef5350'], [1, '#ffb74d']])
+                ))
+                fig_dogs.update_layout(**create_chart_layout('Underperforming Items (Consider Removal)', 400))
+                fig_dogs.update_layout(yaxis=dict(autorange='reversed'), xaxis_title='Revenue ($)')
+                fig_dogs.update_xaxes(tickprefix='$', tickformat=',')
+                st.plotly_chart(fig_dogs, use_container_width=True)
         
-        # Void Rate Analysis
-        if 'Item_Void_Rate' in data['df_menu'].columns:
-            st.subheader("Void Rate by Item")
-            high_void_items = data['df_menu'][data['df_menu']['Item_Void_Rate'] > 0].nlargest(15, 'Item_Void_Rate')
-            
-            if not high_void_items.empty:
-                fig_void = px.bar(
-                    high_void_items,
-                    x='Item' if 'Item' in high_void_items.columns else high_void_items.index,
-                    y='Item_Void_Rate',
-                    color='Item_Void_Rate',
-                    color_continuous_scale='Reds',
-                    title='Items with Highest Void Rates'
-                )
-                fig_void.update_layout(
-                    template='plotly_dark',
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    font=dict(color='white'),
-                    height=350,
-                    xaxis_tickangle=-45,
-                    yaxis_title='Void Rate (%)'
-                )
-                st.plotly_chart(fig_void, use_container_width=True)
-        
-        # Detailed Menu Table
         with st.expander("📋 View Full Menu Analysis Table"):
             display_cols = [col for col in ['Item', 'Category', 'Qty_Sold', 'Total_Revenue', 'BCG_Matrix', 'Item_Void_Rate'] if col in data['df_menu'].columns]
-            st.dataframe(
-                data['df_menu'][display_cols].sort_values('Total_Revenue', ascending=False),
-                use_container_width=True,
-                height=400
-            )
+            if display_cols:
+                st.dataframe(data['df_menu'][display_cols].sort_values('Total_Revenue', ascending=False), use_container_width=True, height=400)
     else:
         st.warning("No menu data available. Please upload menu_forensics.csv")
 
@@ -839,7 +863,7 @@ with tabs[1]:
 # TAB 2: COMPETITIVE LANDSCAPE
 # ============================================================================
 with tabs[2]:
-    st.header("Competitive Landscape Analysis")
+    st.markdown("<h2 style='color: #ffffff !important;'>Competitive Landscape Analysis</h2>", unsafe_allow_html=True)
     
     if not data['df_map'].empty and 'Latitude' in data['df_map'].columns and 'Longitude' in data['df_map'].columns:
         valid_map_data = data['df_map'][
@@ -850,48 +874,33 @@ with tabs[2]:
         ]
         
         if not valid_map_data.empty:
-            # Map controls
             col_map_ctrl1, col_map_ctrl2 = st.columns(2)
             with col_map_ctrl1:
-                map_style = st.selectbox("Map Style", ["Dark", "Satellite", "Streets"])
+                map_style = st.selectbox("Map Style", ["Dark", "Streets", "Satellite"])
             with col_map_ctrl2:
                 radius_filter = st.slider("Competitor Radius (miles)", 1, 10, 5)
             
-            # Calculate center
             center_lat = valid_map_data['Latitude'].mean()
             center_lon = valid_map_data['Longitude'].mean()
             
-            # Create folium map
-            tile_style = 'CartoDB dark_matter' if map_style == "Dark" else ('Stamen Terrain' if map_style == "Satellite" else 'OpenStreetMap')
+            tile_style = 'CartoDB dark_matter' if map_style == "Dark" else ('OpenStreetMap' if map_style == "Streets" else 'Stamen Terrain')
             
-            m = folium.Map(
-                location=[center_lat, center_lon],
-                zoom_start=13,
-                tiles=tile_style
-            )
+            m = folium.Map(location=[center_lat, center_lon], zoom_start=13, tiles=tile_style)
             
-            # Add markers
             for idx, row in valid_map_data.iterrows():
-                is_best_regards = 'Best Regards' in str(row.get('Location Name', ''))
+                loc_name = str(row.get('Location Name', ''))
+                is_best_regards = 'Best Regards' in loc_name or 'best regards' in loc_name.lower()
                 
                 if is_best_regards:
-                    color = 'green'
-                    icon = 'star'
-                    prefix = 'fa'
+                    color, icon, prefix = 'green', 'star', 'fa'
                 else:
                     revenue = row.get('Total_Revenue', 0)
-                    if revenue > 500000:
-                        color = 'red'
-                    elif revenue > 200000:
-                        color = 'orange'
-                    else:
-                        color = 'blue'
-                    icon = 'glass'
-                    prefix = 'fa'
+                    color = 'red' if revenue > 500000 else ('orange' if revenue > 200000 else 'blue')
+                    icon, prefix = 'glass', 'fa'
                 
                 popup_html = f"""
                 <div style='font-family: Arial; width: 200px;'>
-                    <h4 style='margin: 0; color: #333;'>{row.get('Location Name', 'Unknown')}</h4>
+                    <h4 style='margin: 0; color: #333;'>{loc_name}</h4>
                     <p style='margin: 5px 0;'><strong>Est. Revenue:</strong> ${row.get('Total_Revenue', 0):,.0f}</p>
                 </div>
                 """
@@ -902,108 +911,96 @@ with tabs[2]:
                     icon=folium.Icon(color=color, icon=icon, prefix=prefix)
                 ).add_to(m)
             
-            # Add heatmap layer
             heat_data = [[row['Latitude'], row['Longitude'], row.get('Total_Revenue', 1)] for idx, row in valid_map_data.iterrows()]
             plugins.HeatMap(heat_data, radius=25, blur=15).add_to(m)
             
-            # Display map
             st_folium(m, width=None, height=500, use_container_width=True)
             
-            # Competitor analysis
             st.markdown("---")
-            st.subheader("Competitive Analysis Summary")
+            st.markdown("<h3 style='color: #ffffff !important;'>Competitive Analysis Summary</h3>", unsafe_allow_html=True)
             
             col_comp1, col_comp2, col_comp3 = st.columns(3)
-            
             with col_comp1:
-                total_competitors = len(valid_map_data) - 1  # Exclude Best Regards
-                st.metric("Total Competitors", total_competitors)
-            
+                st.metric("Total Competitors", len(valid_map_data) - 1)
             with col_comp2:
                 if 'Total_Revenue' in valid_map_data.columns:
-                    avg_competitor_revenue = valid_map_data['Total_Revenue'].mean()
-                    st.metric("Avg Competitor Revenue", f"${avg_competitor_revenue:,.0f}")
-            
+                    st.metric("Avg Competitor Revenue", f"${valid_map_data['Total_Revenue'].mean():,.0f}")
             with col_comp3:
-                if 'Total_Revenue' in valid_map_data.columns:
+                if 'Total_Revenue' in valid_map_data.columns and valid_map_data['Total_Revenue'].sum() > 0:
                     market_share = (kpis['avg_monthly_revenue'] * 12) / valid_map_data['Total_Revenue'].sum() * 100
                     st.metric("Est. Market Share", f"{market_share:.1f}%")
             
-            # Competitor table
             with st.expander("📍 View All Locations"):
                 display_cols = [col for col in ['Location Name', 'Total_Revenue', 'Latitude', 'Longitude'] if col in valid_map_data.columns]
-                st.dataframe(
-                    valid_map_data[display_cols].sort_values('Total_Revenue', ascending=False),
-                    use_container_width=True
-                )
+                if display_cols:
+                    st.dataframe(valid_map_data[display_cols].sort_values('Total_Revenue', ascending=False), use_container_width=True)
         else:
             st.warning("No valid location coordinates found in map data.")
     else:
         st.warning("No map data available. Please upload map_data.csv with Latitude and Longitude columns.")
     
-    # Geo Pressure Analysis
-    if not data['df_geo'].empty:
+    if not data['df_geo'].empty and 'Month' in data['df_geo'].columns and 'GeoPressure_Total' in data['df_geo'].columns:
         st.markdown("---")
-        st.subheader("Geographic Pressure Index")
+        st.markdown("<h3 style='color: #ffffff !important;'>Geographic Pressure Index</h3>", unsafe_allow_html=True)
         
-        fig_geo = px.line(
-            data['df_geo'],
-            x='Month',
-            y='GeoPressure_Total',
-            title='Competitive Pressure Over Time',
-            markers=True
-        )
-        fig_geo.update_layout(
-            template='plotly_dark',
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            font=dict(color='white'),
-            height=350
-        )
-        fig_geo.update_traces(line=dict(color='#f59e0b', width=3), marker=dict(size=8))
+        fig_geo = go.Figure()
+        fig_geo.add_trace(go.Scatter(
+            x=data['df_geo']['Month'], y=data['df_geo']['GeoPressure_Total'],
+            mode='lines+markers', line=dict(color=CHART_COLORS['primary'], width=3),
+            marker=dict(size=8, color=CHART_COLORS['primary'])
+        ))
+        fig_geo.update_layout(**create_chart_layout('Competitive Pressure Over Time', 350))
         st.plotly_chart(fig_geo, use_container_width=True)
 
 # ============================================================================
 # TAB 3: RISK DETECTION
 # ============================================================================
 with tabs[3]:
-    st.header("Operational Risk & Detection Analysis")
+    st.markdown("<h2 style='color: #ffffff !important;'>Operational Risk & Detection Analysis</h2>", unsafe_allow_html=True)
     
-    # Suspicious Servers Analysis
-    if not data['df_servers'].empty:
-        st.subheader("🚨 High-Risk Server Analysis")
+    # Check if server data exists AND has required columns with data
+    has_server_data = (
+        not data['df_servers'].empty and 
+        'Void_Rate' in data['df_servers'].columns and 
+        'Potential_Loss' in data['df_servers'].columns and
+        len(data['df_servers']) > 0
+    )
+    
+    if has_server_data:
+        st.markdown("<h3 style='color: #ffffff !important;'>🚨 High-Risk Server Analysis</h3>", unsafe_allow_html=True)
         
         col_risk1, col_risk2 = st.columns([2, 1])
         
         with col_risk1:
-            fig_servers = px.scatter(
-                data['df_servers'],
-                x='Void_Rate',
-                y='Potential_Loss',
-                size='Void_Z_Score' if 'Void_Z_Score' in data['df_servers'].columns else None,
-                color='Void_Z_Score' if 'Void_Z_Score' in data['df_servers'].columns else 'Void_Rate',
-                hover_name='Server' if 'Server' in data['df_servers'].columns else None,
-                color_continuous_scale='Reds',
-                title='Server Risk Assessment Matrix'
-            )
+            # Build scatter plot safely
+            scatter_kwargs = {
+                'x': 'Void_Rate',
+                'y': 'Potential_Loss',
+                'color_continuous_scale': [[0, '#ffb74d'], [1, '#ef5350']]
+            }
             
-            # Add threshold line
-            fig_servers.add_hline(y=1000, line_dash="dash", line_color="yellow", annotation_text="High Risk Threshold")
+            # Only add size if Void_Z_Score exists and has valid data
+            if 'Void_Z_Score' in data['df_servers'].columns:
+                valid_z_scores = data['df_servers']['Void_Z_Score'].dropna()
+                if len(valid_z_scores) > 0 and valid_z_scores.std() > 0:
+                    scatter_kwargs['size'] = 'Void_Z_Score'
+                    scatter_kwargs['color'] = 'Void_Z_Score'
+                else:
+                    scatter_kwargs['color'] = 'Void_Rate'
+            else:
+                scatter_kwargs['color'] = 'Void_Rate'
             
-            fig_servers.update_layout(
-                template='plotly_dark',
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='white'),
-                height=450,
-                xaxis_title='Void Rate (%)',
-                yaxis_title='Potential Loss ($)'
-            )
+            if 'Server' in data['df_servers'].columns:
+                scatter_kwargs['hover_name'] = 'Server'
+            
+            fig_servers = px.scatter(data['df_servers'], **scatter_kwargs)
+            fig_servers.add_hline(y=1000, line_dash="dash", line_color="#d4af37", annotation_text="High Risk Threshold")
+            fig_servers.update_layout(**create_chart_layout('Server Risk Assessment Matrix', 450))
+            fig_servers.update_layout(xaxis_title='Void Rate (%)', yaxis_title='Potential Loss ($)')
             fig_servers.update_yaxes(tickprefix='$', tickformat=',')
             st.plotly_chart(fig_servers, use_container_width=True)
         
         with col_risk2:
-            # Risk level breakdown
             if 'Void_Z_Score' in data['df_servers'].columns:
                 high_risk = len(data['df_servers'][data['df_servers']['Void_Z_Score'] > 2.0])
                 medium_risk = len(data['df_servers'][(data['df_servers']['Void_Z_Score'] > 1.0) & (data['df_servers']['Void_Z_Score'] <= 2.0)])
@@ -1012,32 +1009,34 @@ with tabs[3]:
                 fig_risk_pie = px.pie(
                     values=[high_risk, medium_risk, low_risk],
                     names=['High Risk', 'Medium Risk', 'Low Risk'],
-                    color_discrete_sequence=['#ef4444', '#f59e0b', '#10b981'],
-                    title='Staff Risk Distribution'
+                    color_discrete_sequence=['#ef5350', '#ffb74d', '#81c784']
                 )
-                fig_risk_pie.update_layout(
-                    template='plotly_dark',
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    font=dict(color='white'),
-                    height=450
-                )
+                fig_risk_pie.update_layout(**create_chart_layout('Staff Risk Distribution', 450))
+                fig_risk_pie.update_traces(textposition='inside', textinfo='percent+label', textfont=dict(color='white'))
                 st.plotly_chart(fig_risk_pie, use_container_width=True)
+            else:
+                st.info("Void Z-Score data not available for risk distribution.")
         
-        # High risk server details
-        st.subheader("High-Risk Individuals")
+        st.markdown("<h3 style='color: #ffffff !important;'>High-Risk Individuals</h3>", unsafe_allow_html=True)
         if 'Void_Z_Score' in data['df_servers'].columns:
             high_risk_servers = data['df_servers'][data['df_servers']['Void_Z_Score'] > 1.5].sort_values('Potential_Loss', ascending=False)
-            
             if not high_risk_servers.empty:
-                st.dataframe(
-                    high_risk_servers,
-                    use_container_width=True,
-                    height=300
-                )
+                st.dataframe(high_risk_servers, use_container_width=True, height=300)
             else:
-                st.success("No high-risk servers detected!")
+                st.success("✓ No high-risk servers detected!")
+        else:
+            st.dataframe(data['df_servers'].sort_values('Potential_Loss', ascending=False).head(10), use_container_width=True, height=300)
     else:
-        st.info("No server risk data available.")
+        st.info("No server risk data available. Risk analysis will appear when suspicious_servers.csv is uploaded.")
+        
+        # Show placeholder metrics
+        col_ph1, col_ph2, col_ph3 = st.columns(3)
+        with col_ph1:
+            st.metric("High-Risk Staff", "0")
+        with col_ph2:
+            st.metric("Medium-Risk Staff", "0")
+        with col_ph3:
+            st.metric("Estimated Loss", "$0")
     
     st.markdown("---")
     
@@ -1045,189 +1044,117 @@ with tabs[3]:
     col_void1, col_void2 = st.columns(2)
     
     with col_void1:
-        if not data['df_voids_h'].empty:
-            st.subheader("Hourly Void Patterns")
+        if not data['df_voids_h'].empty and 'Hour_of_Day' in data['df_voids_h'].columns and 'Void_Rate' in data['df_voids_h'].columns:
+            st.markdown("<h3 style='color: #ffffff !important;'>Hourly Void Patterns</h3>", unsafe_allow_html=True)
             fig_hourly = px.bar(
-                data['df_voids_h'],
-                x='Hour_of_Day',
-                y='Void_Rate',
-                color='Void_Rate',
-                color_continuous_scale='Reds',
-                title='Void Rate by Hour of Day'
+                data['df_voids_h'], x='Hour_of_Day', y='Void_Rate',
+                color='Void_Rate', color_continuous_scale=[[0, '#4a7c4a'], [1, '#ef5350']]
             )
-            fig_hourly.update_layout(
-                template='plotly_dark',
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='white'),
-                height=350,
-                xaxis_title='Hour of Day',
-                yaxis_title='Void Rate (%)'
-            )
+            fig_hourly.update_layout(**create_chart_layout('Void Rate by Hour of Day', 350))
+            fig_hourly.update_layout(xaxis_title='Hour of Day', yaxis_title='Void Rate (%)')
             st.plotly_chart(fig_hourly, use_container_width=True)
+        else:
+            st.markdown("<h3 style='color: #ffffff !important;'>Hourly Void Patterns</h3>", unsafe_allow_html=True)
+            st.info("Hourly void data not available.")
     
     with col_void2:
-        if not data['df_voids_d'].empty:
-            st.subheader("Daily Void Patterns")
+        if not data['df_voids_d'].empty and 'Void_Rate' in data['df_voids_d'].columns:
+            st.markdown("<h3 style='color: #ffffff !important;'>Daily Void Patterns</h3>", unsafe_allow_html=True)
+            day_col = data['df_voids_d'].columns[0]
             fig_daily = px.bar(
-                data['df_voids_d'],
-                x=data['df_voids_d'].columns[0],
-                y='Void_Rate',
-                color='Void_Rate',
-                color_continuous_scale='Reds',
-                title='Void Rate by Day of Week'
+                data['df_voids_d'], x=day_col, y='Void_Rate',
+                color='Void_Rate', color_continuous_scale=[[0, '#4a7c4a'], [1, '#ef5350']]
             )
-            fig_daily.update_layout(
-                template='plotly_dark',
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='white'),
-                height=350,
-                yaxis_title='Void Rate (%)'
-            )
+            fig_daily.update_layout(**create_chart_layout('Void Rate by Day of Week', 350))
+            fig_daily.update_layout(yaxis_title='Void Rate (%)')
             st.plotly_chart(fig_daily, use_container_width=True)
+        else:
+            st.markdown("<h3 style='color: #ffffff !important;'>Daily Void Patterns</h3>", unsafe_allow_html=True)
+            st.info("Daily void data not available.")
     
-    # Suspicious Combinations
     if not data['df_combo'].empty:
-        st.subheader("Suspicious Transaction Combinations")
+        st.markdown("<h3 style='color: #ffffff !important;'>Suspicious Transaction Combinations</h3>", unsafe_allow_html=True)
         st.dataframe(data['df_combo'], use_container_width=True, height=250)
 
 # ============================================================================
 # TAB 4: SENTIMENT ANALYSIS
 # ============================================================================
 with tabs[4]:
-    st.header("Customer Sentiment & Review Analysis")
+    st.markdown("<h2 style='color: #ffffff !important;'>Customer Sentiment & Review Analysis</h2>", unsafe_allow_html=True)
     
-    if not data['df_sentiment'].empty:
+    if not data['df_sentiment'].empty and 'CX_Index' in data['df_sentiment'].columns:
         col_sent1, col_sent2 = st.columns([2, 1])
         
         with col_sent1:
-            # Sentiment over time
             fig_sentiment = go.Figure()
+            fig_sentiment.add_trace(go.Scatter(
+                x=data['df_sentiment']['Month'], y=data['df_sentiment']['CX_Index'],
+                mode='lines+markers', name='Customer Experience Index',
+                line=dict(color=CHART_COLORS['success'], width=3),
+                marker=dict(size=10), fill='tozeroy', fillcolor='rgba(129, 199, 132, 0.15)'
+            ))
             
-            if 'CX_Index' in data['df_sentiment'].columns:
-                fig_sentiment.add_trace(go.Scatter(
-                    x=data['df_sentiment']['Month'],
-                    y=data['df_sentiment']['CX_Index'],
-                    mode='lines+markers',
-                    name='Customer Experience Index',
-                    line=dict(color='#10b981', width=3),
-                    marker=dict(size=10),
-                    fill='tozeroy',
-                    fillcolor='rgba(16, 185, 129, 0.1)'
-                ))
-                
-                # Add average line
-                avg_sentiment = data['df_sentiment']['CX_Index'].mean()
-                fig_sentiment.add_hline(
-                    y=avg_sentiment,
-                    line_dash="dash",
-                    line_color="#f59e0b",
-                    annotation_text=f"Avg: {avg_sentiment:.2f}"
-                )
+            avg_sentiment = data['df_sentiment']['CX_Index'].mean()
+            fig_sentiment.add_hline(y=avg_sentiment, line_dash="dash", line_color=CHART_COLORS['primary'],
+                                    annotation_text=f"Avg: {avg_sentiment:.2f}")
             
-            fig_sentiment.update_layout(
-                title='Customer Experience Index Trend',
-                xaxis_title='Month',
-                yaxis_title='CX Index Score',
-                template='plotly_dark',
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='white'),
-                height=400,
-                yaxis=dict(range=[0, 1])
-            )
-            fig_sentiment.update_xaxes(gridcolor='rgba(255,255,255,0.1)')
-            fig_sentiment.update_yaxes(gridcolor='rgba(255,255,255,0.1)')
+            fig_sentiment.update_layout(**create_chart_layout('Customer Experience Index Trend', 400))
+            fig_sentiment.update_layout(xaxis_title='Month', yaxis_title='CX Index Score', yaxis=dict(range=[0, 1]))
             st.plotly_chart(fig_sentiment, use_container_width=True)
         
         with col_sent2:
-            # Sentiment gauge
-            if 'CX_Index' in data['df_sentiment'].columns:
-                latest_cx = data['df_sentiment']['CX_Index'].iloc[-1]
-                
-                fig_gauge = go.Figure(go.Indicator(
-                    mode="gauge+number+delta",
-                    value=latest_cx,
-                    delta={'reference': data['df_sentiment']['CX_Index'].iloc[-2] if len(data['df_sentiment']) > 1 else latest_cx},
-                    title={'text': "Current CX Score", 'font': {'color': 'white'}},
-                    gauge={
-                        'axis': {'range': [0, 1], 'tickcolor': 'white'},
-                        'bar': {'color': '#10b981'},
-                        'bgcolor': 'rgba(255,255,255,0.1)',
-                        'steps': [
-                            {'range': [0, 0.4], 'color': 'rgba(239, 68, 68, 0.3)'},
-                            {'range': [0.4, 0.7], 'color': 'rgba(245, 158, 11, 0.3)'},
-                            {'range': [0.7, 1], 'color': 'rgba(16, 185, 129, 0.3)'}
-                        ],
-                        'threshold': {
-                            'line': {'color': 'white', 'width': 4},
-                            'thickness': 0.75,
-                            'value': latest_cx
-                        }
-                    }
-                ))
-                fig_gauge.update_layout(
-                    template='plotly_dark',
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    font=dict(color='white'),
-                    height=400
-                )
-                st.plotly_chart(fig_gauge, use_container_width=True)
+            latest_cx = data['df_sentiment']['CX_Index'].iloc[-1]
+            prev_cx = data['df_sentiment']['CX_Index'].iloc[-2] if len(data['df_sentiment']) > 1 else latest_cx
+            
+            fig_gauge = go.Figure(go.Indicator(
+                mode="gauge+number+delta",
+                value=latest_cx,
+                delta={'reference': prev_cx, 'valueformat': '.2f'},
+                title={'text': "Current CX Score", 'font': {'color': 'white', 'size': 16}},
+                number={'font': {'color': 'white', 'size': 40}},
+                gauge={
+                    'axis': {'range': [0, 1], 'tickcolor': 'white', 'tickfont': {'color': 'white'}},
+                    'bar': {'color': CHART_COLORS['primary']},
+                    'bgcolor': 'rgba(255,255,255,0.1)',
+                    'steps': [
+                        {'range': [0, 0.4], 'color': 'rgba(239, 83, 80, 0.4)'},
+                        {'range': [0.4, 0.7], 'color': 'rgba(255, 183, 77, 0.4)'},
+                        {'range': [0.7, 1], 'color': 'rgba(129, 199, 132, 0.4)'}
+                    ],
+                    'threshold': {'line': {'color': 'white', 'width': 4}, 'thickness': 0.75, 'value': latest_cx}
+                }
+            ))
+            fig_gauge.update_layout(**create_chart_layout('', 400))
+            st.plotly_chart(fig_gauge, use_container_width=True)
         
-        # Sentiment vs Revenue correlation
-        if 'BestRegards_Revenue' in data['df_sentiment'].columns and 'CX_Index' in data['df_sentiment'].columns:
-            st.subheader("Sentiment-Revenue Correlation")
+        if 'BestRegards_Revenue' in data['df_sentiment'].columns:
+            st.markdown("<h3 style='color: #ffffff !important;'>Sentiment-Revenue Correlation</h3>", unsafe_allow_html=True)
             
             fig_corr = make_subplots(specs=[[{"secondary_y": True}]])
+            fig_corr.add_trace(go.Bar(
+                x=data['df_sentiment']['Month'], y=data['df_sentiment']['BestRegards_Revenue'],
+                name='Revenue', marker_color='rgba(74, 124, 74, 0.7)'
+            ), secondary_y=False)
+            fig_corr.add_trace(go.Scatter(
+                x=data['df_sentiment']['Month'], y=data['df_sentiment']['CX_Index'],
+                name='CX Index', mode='lines+markers',
+                line=dict(color=CHART_COLORS['primary'], width=3), marker=dict(size=8)
+            ), secondary_y=True)
             
-            fig_corr.add_trace(
-                go.Bar(
-                    x=data['df_sentiment']['Month'],
-                    y=data['df_sentiment']['BestRegards_Revenue'],
-                    name='Revenue',
-                    marker_color='rgba(102, 126, 234, 0.7)'
-                ),
-                secondary_y=False
-            )
-            
-            fig_corr.add_trace(
-                go.Scatter(
-                    x=data['df_sentiment']['Month'],
-                    y=data['df_sentiment']['CX_Index'],
-                    name='CX Index',
-                    mode='lines+markers',
-                    line=dict(color='#10b981', width=3),
-                    marker=dict(size=8)
-                ),
-                secondary_y=True
-            )
-            
-            fig_corr.update_layout(
-                title='Revenue vs Customer Sentiment',
-                template='plotly_dark',
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='white'),
-                height=400,
-                legend=dict(orientation='h', yanchor='bottom', y=1.02)
-            )
-            fig_corr.update_xaxes(gridcolor='rgba(255,255,255,0.1)')
-            fig_corr.update_yaxes(title_text='Revenue ($)', secondary_y=False, tickprefix='$', tickformat=',', gridcolor='rgba(255,255,255,0.1)')
+            fig_corr.update_layout(**create_chart_layout('Revenue vs Customer Sentiment', 400))
+            fig_corr.update_layout(legend=dict(orientation='h', yanchor='bottom', y=1.02))
+            fig_corr.update_yaxes(title_text='Revenue ($)', secondary_y=False, tickprefix='$', tickformat=',')
             fig_corr.update_yaxes(title_text='CX Index', secondary_y=True, range=[0, 1])
-            
             st.plotly_chart(fig_corr, use_container_width=True)
             
-            # Calculate correlation
             correlation = data['df_sentiment']['BestRegards_Revenue'].corr(data['df_sentiment']['CX_Index'])
-            
             col_corr1, col_corr2, col_corr3 = st.columns(3)
             with col_corr1:
                 st.metric("Correlation Coefficient", f"{correlation:.3f}")
             with col_corr2:
                 st.metric("Avg CX Index", f"{data['df_sentiment']['CX_Index'].mean():.2f}")
             with col_corr3:
-                trend = "Improving" if data['df_sentiment']['CX_Index'].iloc[-1] > data['df_sentiment']['CX_Index'].iloc[0] else "Declining"
+                trend = "Improving ↑" if data['df_sentiment']['CX_Index'].iloc[-1] > data['df_sentiment']['CX_Index'].iloc[0] else "Declining ↓"
                 st.metric("Sentiment Trend", trend)
     else:
         st.warning("No sentiment data available. Please upload sentiment.csv")
@@ -1236,149 +1163,105 @@ with tabs[4]:
 # TAB 5: EXECUTIVE SUMMARY
 # ============================================================================
 with tabs[5]:
-    st.header("Executive Summary & Strategic Roadmap")
+    st.markdown("<h2 style='color: #ffffff !important;'>Executive Summary & Strategic Roadmap</h2>", unsafe_allow_html=True)
     
-    # Key Insights
-    st.subheader("📊 Key Business Insights")
+    st.markdown("<h3 style='color: #ffffff !important;'>📊 Key Business Insights</h3>", unsafe_allow_html=True)
     
     insight_col1, insight_col2 = st.columns(2)
     
     with insight_col1:
-        st.markdown("""
+        st.markdown(f"""
         <div class='glass-card'>
-            <h3>💰 Revenue Performance</h3>
-            <ul style='color: rgba(255,255,255,0.8);'>
-                <li>3-Month Avg Revenue: <strong>${:,.0f}</strong></li>
-                <li>Month-over-Month Change: <strong>{:+.1f}%</strong></li>
-                <li>Revenue trend is {}</li>
+            <h3 style='color: #d4af37 !important;'>💰 Revenue Performance</h3>
+            <ul style='color: rgba(255,255,255,0.9);'>
+                <li>3-Month Avg Revenue: <strong>${kpis['avg_monthly_revenue']:,.0f}</strong></li>
+                <li>Month-over-Month Change: <strong>{kpis['revenue_change']:+.1f}%</strong></li>
+                <li>Revenue trend is {"positive 📈" if kpis['revenue_change'] > 0 else "needs attention 📉"}</li>
             </ul>
         </div>
-        """.format(
-            kpis['avg_monthly_revenue'],
-            kpis['revenue_change'],
-            "positive 📈" if kpis['revenue_change'] > 0 else "needs attention 📉"
-        ), unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
         
-        st.markdown("""
+        st.markdown(f"""
         <div class='glass-card' style='margin-top: 20px;'>
-            <h3>🍸 Menu Optimization</h3>
-            <ul style='color: rgba(255,255,255,0.8);'>
-                <li>Star Items (Keep & Promote): <strong>{}</strong></li>
-                <li>Dog Items (Consider Removal): <strong>{}</strong></li>
+            <h3 style='color: #d4af37 !important;'>🍸 Menu Optimization</h3>
+            <ul style='color: rgba(255,255,255,0.9);'>
+                <li>Star Items (Keep & Promote): <strong>{kpis['star_items']}</strong></li>
+                <li>Dog Items (Consider Removal): <strong>{kpis['dog_items']}</strong></li>
                 <li>Estimated revenue lift from optimization: <strong>8-12%</strong></li>
             </ul>
         </div>
-        """.format(kpis['star_items'], kpis['dog_items']), unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
     
     with insight_col2:
-        st.markdown("""
+        st.markdown(f"""
         <div class='glass-card'>
-            <h3>⚠️ Risk Assessment</h3>
-            <ul style='color: rgba(255,255,255,0.8);'>
-                <li>Estimated Monthly Loss: <strong>${:,.0f}</strong></li>
-                <li>High-Risk Staff Members: <strong>{}</strong></li>
-                <li>Recommended Action: {}</li>
+            <h3 style='color: #d4af37 !important;'>⚠️ Risk Assessment</h3>
+            <ul style='color: rgba(255,255,255,0.9);'>
+                <li>Estimated Monthly Loss: <strong>${kpis['estimated_theft']:,.0f}</strong></li>
+                <li>High-Risk Staff Members: <strong>{kpis['high_risk_servers']}</strong></li>
+                <li>Recommended Action: {"Immediate intervention needed" if kpis['high_risk_servers'] > 3 else "Continue monitoring"}</li>
             </ul>
         </div>
-        """.format(
-            kpis['estimated_theft'],
-            kpis['high_risk_servers'],
-            "Immediate intervention needed" if kpis['high_risk_servers'] > 3 else "Continue monitoring"
-        ), unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
         
-        st.markdown("""
+        cx_status = "Excellent ✨" if kpis['latest_sentiment'] > 0.7 else ("Good 👍" if kpis['latest_sentiment'] > 0.5 else "Needs Improvement ⚠️")
+        st.markdown(f"""
         <div class='glass-card' style='margin-top: 20px;'>
-            <h3>😊 Customer Experience</h3>
-            <ul style='color: rgba(255,255,255,0.8);'>
-                <li>Current CX Index: <strong>{:.2f}/1.00</strong></li>
-                <li>Average CX Index: <strong>{:.2f}/1.00</strong></li>
-                <li>Status: {}</li>
+            <h3 style='color: #d4af37 !important;'>😊 Customer Experience</h3>
+            <ul style='color: rgba(255,255,255,0.9);'>
+                <li>Current CX Index: <strong>{kpis['latest_sentiment']:.2f}/1.00</strong></li>
+                <li>Average CX Index: <strong>{kpis['avg_sentiment']:.2f}/1.00</strong></li>
+                <li>Status: {cx_status}</li>
             </ul>
         </div>
-        """.format(
-            kpis['latest_sentiment'],
-            kpis['avg_sentiment'],
-            "Excellent ✨" if kpis['latest_sentiment'] > 0.7 else ("Good 👍" if kpis['latest_sentiment'] > 0.5 else "Needs Improvement ⚠️")
-        ), unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
     
     st.markdown("---")
     
-    # Strategic Recommendations
-    st.subheader("🎯 Strategic Recommendations")
+    st.markdown("<h3 style='color: #ffffff !important;'>🎯 Strategic Recommendations</h3>", unsafe_allow_html=True)
     
     recommendations = []
-    
-    # Revenue recommendations
     if kpis['revenue_change'] < 0:
-        recommendations.append({
-            'priority': 'High',
-            'area': 'Revenue',
-            'recommendation': 'Implement promotional campaigns to reverse declining revenue trend',
-            'impact': 'Potential 10-15% revenue increase'
-        })
-    
-    # Risk recommendations
+        recommendations.append({'priority': 'High', 'area': 'Revenue', 'recommendation': 'Implement promotional campaigns to reverse declining revenue trend', 'impact': 'Potential 10-15% revenue increase'})
     if kpis['high_risk_servers'] > 0:
-        recommendations.append({
-            'priority': 'High',
-            'area': 'Operations',
-            'recommendation': f'Investigate {kpis["high_risk_servers"]} high-risk staff members with elevated void rates',
-            'impact': f'Potential ${kpis["estimated_theft"]:,.0f} monthly savings'
-        })
-    
-    # Menu recommendations
+        recommendations.append({'priority': 'High', 'area': 'Operations', 'recommendation': f'Investigate {kpis["high_risk_servers"]} high-risk staff members with elevated void rates', 'impact': f'Potential ${kpis["estimated_theft"]:,.0f} monthly savings'})
     if kpis['dog_items'] > 5:
-        recommendations.append({
-            'priority': 'Medium',
-            'area': 'Menu',
-            'recommendation': f'Remove or rebrand {kpis["dog_items"]} underperforming menu items',
-            'impact': 'Improved margins and operational efficiency'
-        })
-    
-    # Sentiment recommendations
+        recommendations.append({'priority': 'Medium', 'area': 'Menu', 'recommendation': f'Remove or rebrand {kpis["dog_items"]} underperforming menu items', 'impact': 'Improved margins and operational efficiency'})
     if kpis['latest_sentiment'] < 0.6:
-        recommendations.append({
-            'priority': 'High',
-            'area': 'Customer Experience',
-            'recommendation': 'Implement customer feedback program and service training',
-            'impact': 'Expected 15-20% improvement in CX scores'
-        })
+        recommendations.append({'priority': 'High', 'area': 'Customer Experience', 'recommendation': 'Implement customer feedback program and service training', 'impact': 'Expected 15-20% improvement in CX scores'})
     
-    # Add default recommendations if none generated
     if not recommendations:
         recommendations = [
             {'priority': 'Medium', 'area': 'Growth', 'recommendation': 'Explore expansion opportunities based on competitive analysis', 'impact': 'Market share growth'},
             {'priority': 'Low', 'area': 'Operations', 'recommendation': 'Continue monitoring KPIs and maintain current performance', 'impact': 'Sustained profitability'}
         ]
     
-    # Display recommendations
     for rec in recommendations:
-        priority_color = {'High': '#ef4444', 'Medium': '#f59e0b', 'Low': '#10b981'}[rec['priority']]
+        priority_color = {'High': '#ef5350', 'Medium': '#ffb74d', 'Low': '#81c784'}[rec['priority']]
         st.markdown(f"""
-        <div style='background: rgba(255,255,255,0.05); border-left: 4px solid {priority_color}; padding: 15px; border-radius: 8px; margin-bottom: 10px;'>
+        <div style='background: rgba(45, 74, 45, 0.4); border-left: 4px solid {priority_color}; padding: 15px; border-radius: 8px; margin-bottom: 10px;'>
             <div style='display: flex; justify-content: space-between; align-items: center;'>
                 <div>
                     <span style='background: {priority_color}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;'>{rec['priority']} Priority</span>
-                    <span style='color: rgba(255,255,255,0.6); margin-left: 10px;'>{rec['area']}</span>
+                    <span style='color: rgba(255,255,255,0.7); margin-left: 10px;'>{rec['area']}</span>
                 </div>
             </div>
             <p style='color: white; margin: 10px 0 5px 0; font-weight: 500;'>{rec['recommendation']}</p>
-            <p style='color: rgba(255,255,255,0.6); margin: 0; font-size: 0.875rem;'>Expected Impact: {rec['impact']}</p>
+            <p style='color: rgba(255,255,255,0.7); margin: 0; font-size: 0.875rem;'>Expected Impact: {rec['impact']}</p>
         </div>
         """, unsafe_allow_html=True)
     
     st.markdown("---")
     
-    # 90-Day Roadmap
-    st.subheader("🗓️ 90-Day Strategic Roadmap")
+    st.markdown("<h3 style='color: #ffffff !important;'>🗓️ 90-Day Strategic Roadmap</h3>", unsafe_allow_html=True)
     
     roadmap_col1, roadmap_col2, roadmap_col3 = st.columns(3)
     
     with roadmap_col1:
         st.markdown("""
         <div class='glass-card'>
-            <h4 style='color: #10b981;'>Days 1-30: Foundation</h4>
-            <ul style='color: rgba(255,255,255,0.8); font-size: 0.9rem;'>
+            <h4 style='color: #81c784 !important;'>Days 1-30: Foundation</h4>
+            <ul style='color: rgba(255,255,255,0.9); font-size: 0.9rem;'>
                 <li>Complete staff risk assessment</li>
                 <li>Implement void monitoring system</li>
                 <li>Launch customer feedback collection</li>
@@ -1390,8 +1273,8 @@ with tabs[5]:
     with roadmap_col2:
         st.markdown("""
         <div class='glass-card'>
-            <h4 style='color: #f59e0b;'>Days 31-60: Optimization</h4>
-            <ul style='color: rgba(255,255,255,0.8); font-size: 0.9rem;'>
+            <h4 style='color: #ffb74d !important;'>Days 31-60: Optimization</h4>
+            <ul style='color: rgba(255,255,255,0.9); font-size: 0.9rem;'>
                 <li>Execute menu optimization</li>
                 <li>Staff training programs</li>
                 <li>Implement pricing strategies</li>
@@ -1403,8 +1286,8 @@ with tabs[5]:
     with roadmap_col3:
         st.markdown("""
         <div class='glass-card'>
-            <h4 style='color: #667eea;'>Days 61-90: Growth</h4>
-            <ul style='color: rgba(255,255,255,0.8); font-size: 0.9rem;'>
+            <h4 style='color: #d4af37 !important;'>Days 61-90: Growth</h4>
+            <ul style='color: rgba(255,255,255,0.9); font-size: 0.9rem;'>
                 <li>Launch marketing campaigns</li>
                 <li>Expansion feasibility study</li>
                 <li>Technology upgrades</li>
@@ -1413,20 +1296,16 @@ with tabs[5]:
         </div>
         """, unsafe_allow_html=True)
     
-    # Export Options
     st.markdown("---")
-    st.subheader("📥 Export Options")
+    st.markdown("<h3 style='color: #ffffff !important;'>📥 Export Options</h3>", unsafe_allow_html=True)
     
     export_col1, export_col2, export_col3 = st.columns(3)
-    
     with export_col1:
         if st.button("📊 Export Full Report", use_container_width=True):
             st.info("Report generation feature - connect to document generation service")
-    
     with export_col2:
         if st.button("📈 Export Charts", use_container_width=True):
             st.info("Chart export feature - save visualizations as PNG/PDF")
-    
     with export_col3:
         if st.button("📋 Export Data", use_container_width=True):
             st.info("Data export feature - download raw data as CSV/Excel")
