@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
-import plotly.graph_objects as go  # Added for Dual-Axis charts
+import plotly.graph_objects as go
 import folium
 from folium import plugins
 from streamlit_folium import st_folium
@@ -38,14 +38,20 @@ def load_all_data():
         return df
 
     # --- A. LOAD MASTER ---
-    try:
-        data['df_master'] = pd.read_parquet('master_data.parquet')
-    except:
+    # Explicit file check to debug "Missing" error
+    data['df_master'] = pd.DataFrame()
+    if os.path.exists('master_data.parquet'):
+        try:
+            data['df_master'] = pd.read_parquet('master_data.parquet')
+        except Exception as e:
+            errors.append(f"Parquet Load Error: {e}")
+    elif os.path.exists('master_data.csv'):
         try:
             data['df_master'] = pd.read_csv('master_data.csv', low_memory=False)
         except Exception as e:
-            data['df_master'] = pd.DataFrame()
-            errors.append(f"Master Load Error: {e}")
+            errors.append(f"CSV Load Error: {e}")
+    else:
+        errors.append("No Master Data File Found in Repo")
 
     if not data['df_master'].empty:
         cols = data['df_master'].columns
@@ -106,6 +112,8 @@ with st.sidebar:
         st.success("✅ Master Data: Active")
     else:
         st.error("❌ Master Data: Missing")
+        if load_errors:
+            st.error(f"Debug: {load_errors[0]}")
     
     if not data['df_forecast'].empty:
         st.success("✅ Forecast Model: Active")
@@ -201,73 +209,89 @@ with tabs[2]:
     st.header("Geospatial Market Pressure")
     
     if not data['df_map'].empty:
-        # 1. Clean Map Data
+        # 1. Clean Map Data (Crash Prevention)
         df_m = data['df_map'].copy()
+        
+        # Robust Rename
         cols = df_m.columns.str.lower()
         if 'latitude' in cols: df_m.rename(columns={df_m.columns[list(cols).index('latitude')]: 'Latitude'}, inplace=True)
         if 'longitude' in cols: df_m.rename(columns={df_m.columns[list(cols).index('longitude')]: 'Longitude'}, inplace=True)
         
+        # Force Numeric & Drop NaNs
         df_m['Latitude'] = pd.to_numeric(df_m['Latitude'], errors='coerce')
         df_m['Longitude'] = pd.to_numeric(df_m['Longitude'], errors='coerce')
         df_m = df_m.dropna(subset=['Latitude', 'Longitude'])
         
         if not df_m.empty:
-            # 2. Setup Time Data
-            heat_data = []
-            time_index = []
-            
-            if not data['df_geo'].empty and 'Month' in data['df_geo'].columns and 'GeoPressure_Total' in data['df_geo'].columns:
-                try:
-                    df_g = data['df_geo'].copy()
-                    df_g['Month'] = pd.to_datetime(df_g['Month'])
-                    df_g = df_g.sort_values('Month')
-                    
-                    max_p = df_g['GeoPressure_Total'].max()
-                    df_g['Intensity'] = (df_g['GeoPressure_Total'] / max_p).astype(float) if max_p > 0 else 0.5
-                    
-                    for _, row in df_g.iterrows():
-                        monthly_points = []
-                        intensity = float(row['Intensity'])
-                        for _, loc in df_m.iterrows():
-                            # STRICT FLOAT CONVERSION to prevent 'list' vs 'float' error
-                            monthly_points.append([float(loc['Latitude']), float(loc['Longitude']), intensity])
+            # TRY/EXCEPT BLOCK FOR MAP RENDERING
+            try:
+                # 2. Setup Time Data
+                heat_data = []
+                time_index = []
+                valid_time_data = False
+                
+                if not data['df_geo'].empty and 'Month' in data['df_geo'].columns and 'GeoPressure_Total' in data['df_geo'].columns:
+                    try:
+                        df_g = data['df_geo'].copy()
+                        df_g['Month'] = pd.to_datetime(df_g['Month'])
+                        df_g = df_g.sort_values('Month')
                         
-                        if monthly_points:
-                            heat_data.append(monthly_points)
-                            time_index.append(row['Month'].strftime('%Y-%m'))
-                except Exception as e:
-                    st.warning(f"Time-Series error: {e}")
+                        max_p = df_g['GeoPressure_Total'].max()
+                        df_g['Intensity'] = (df_g['GeoPressure_Total'] / max_p).astype(float) if max_p > 0 else 0.5
+                        
+                        for _, row in df_g.iterrows():
+                            monthly_points = []
+                            intensity = float(row['Intensity'])
+                            for _, loc in df_m.iterrows():
+                                monthly_points.append([float(loc['Latitude']), float(loc['Longitude']), intensity])
+                            
+                            if monthly_points:
+                                heat_data.append(monthly_points)
+                                time_index.append(row['Month'].strftime('%Y-%m'))
+                        
+                        valid_time_data = True
+                    except:
+                        st.warning("Time-Series data corrupt. Showing static map.")
 
-            # 3. Render Map with Safe Bounds
-            # We calculate bounds manually from static points to avoid st_folium crashing on dynamic layers
-            m = folium.Map(location=[df_m['Latitude'].mean(), df_m['Longitude'].mean()], zoom_start=13)
-            
-            # Static Markers
-            for _, row in df_m.iterrows():
-                name_col = [c for c in df_m.columns if 'name' in c.lower()]
-                loc_name = str(row[name_col[0]]) if name_col else "Location"
-                color = 'red' if 'BEST REGARDS' in loc_name.upper() else 'blue'
-                folium.CircleMarker(
-                    [row['Latitude'], row['Longitude']], 
-                    radius=5, color=color, fill=True, fill_color=color, fill_opacity=0.8,
-                    tooltip=loc_name
-                ).add_to(m)
+                # 3. Render Map
+                # Explicitly set bounds to prevent auto-zoom crash
+                min_lat, max_lat = df_m['Latitude'].min(), df_m['Latitude'].max()
+                min_lon, max_lon = df_m['Longitude'].min(), df_m['Longitude'].max()
+                
+                m = folium.Map(location=[df_m['Latitude'].mean(), df_m['Longitude'].mean()], zoom_start=13)
+                m.fit_bounds([[min_lat, min_lon], [max_lat, max_lon]]) # FORCE BOUNDS
+                
+                # Static Markers
+                for _, row in df_m.iterrows():
+                    name_col = [c for c in df_m.columns if 'name' in c.lower()]
+                    loc_name = str(row[name_col[0]]) if name_col else "Location"
+                    color = 'red' if 'BEST REGARDS' in loc_name.upper() else 'blue'
+                    folium.CircleMarker(
+                        [row['Latitude'], row['Longitude']], 
+                        radius=5, color=color, fill=True, fill_color=color, fill_opacity=0.8,
+                        tooltip=loc_name
+                    ).add_to(m)
 
-            # Time Player (Wrapped in try/except)
-            if heat_data:
-                try:
+                # Time Player
+                if valid_time_data and heat_data:
                     plugins.HeatMapWithTime(
                         heat_data,
                         index=time_index,
                         auto_play=True,
                         radius=40,
-                        max_opacity=0.6
+                        max_opacity=0.6,
+                        use_local_extrema=False # Simplify calculation
                     ).add_to(m)
-                except:
-                    pass
-            
-            # SAFE RENDER: We explicitly do NOT try to auto-bound the dynamic layer
-            st_folium(m, width=800, height=500, returned_objects=[])
+                
+                st_folium(m, width=800, height=500, returned_objects=[])
+                
+            except Exception as e:
+                # FALLBACK STATIC MAP
+                st.error(f"Interactive Map Error: {e}. Loading Static Fallback.")
+                m_static = folium.Map(location=[df_m['Latitude'].mean(), df_m['Longitude'].mean()], zoom_start=13)
+                for _, row in df_m.iterrows():
+                    folium.Marker([row['Latitude'], row['Longitude']]).add_to(m_static)
+                st_folium(m_static, width=800, height=500, returned_objects=[])
             
         else:
             st.error("Map Data exists but contains no valid Latitude/Longitude.")
@@ -311,11 +335,9 @@ with tabs[4]:
     
     with col1:
         if not data['df_sentiment'].empty:
-            # DUAL AXIS CHART (Fixes the "One Line" issue)
-            # Create figure with secondary y-axis
+            # DUAL AXIS CHART
             fig = go.Figure()
 
-            # Add Revenue Trace (Left Axis)
             fig.add_trace(go.Bar(
                 x=data['df_sentiment']['Month'],
                 y=data['df_sentiment']['BestRegards_Revenue'],
@@ -324,7 +346,6 @@ with tabs[4]:
                 opacity=0.6
             ))
 
-            # Add CX Index Trace (Right Axis)
             fig.add_trace(go.Scatter(
                 x=data['df_sentiment']['Month'],
                 y=data['df_sentiment']['CX_Index'],
@@ -333,7 +354,6 @@ with tabs[4]:
                 line=dict(color='red', width=3)
             ))
 
-            # Create axis layout
             fig.update_layout(
                 title="Correlation: Revenue vs. Customer Experience",
                 xaxis_title="Month",
@@ -342,7 +362,7 @@ with tabs[4]:
                     title="CX Index (0-1)",
                     overlaying="y",
                     side="right",
-                    range=[0, 1] # Lock sentiment scale 0-1
+                    range=[0, 1] 
                 ),
                 legend=dict(x=0, y=1.1, orientation="h")
             )
