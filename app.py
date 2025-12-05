@@ -38,21 +38,25 @@ def load_all_data():
         return df
 
     # --- A. LOAD MASTER ---
-    # Explicit file check to debug "Missing" error
+    # Robust loader that tries every possible format
     data['df_master'] = pd.DataFrame()
     if os.path.exists('master_data.parquet'):
         try:
             data['df_master'] = pd.read_parquet('master_data.parquet')
         except Exception as e:
             errors.append(f"Parquet Load Error: {e}")
-    elif os.path.exists('master_data.csv'):
+    
+    # Fallback to CSV if Parquet failed or missing
+    if data['df_master'].empty and os.path.exists('master_data.csv'):
         try:
             data['df_master'] = pd.read_csv('master_data.csv', low_memory=False)
         except Exception as e:
             errors.append(f"CSV Load Error: {e}")
-    else:
-        errors.append("No Master Data File Found in Repo")
+            
+    if data['df_master'].empty and not errors:
+        errors.append("No Master Data File Found (master_data.parquet or master_data.csv)")
 
+    # Fix Master Data Types
     if not data['df_master'].empty:
         cols = data['df_master'].columns
         if 'Date' in cols:
@@ -69,7 +73,15 @@ def load_all_data():
     menu_raw = clean_numeric(menu_raw, ['Qty_Sold', 'Total_Revenue', 'Item_Void_Rate'])
     data['df_menu'] = menu_raw[(menu_raw['Total_Revenue'] > 0) | (menu_raw['Qty_Sold'] > 0)]
 
-    data['df_map'] = load_safe('map_data.csv')
+    # Map Data: Standardize Columns immediately
+    map_raw = load_safe('map_data.csv')
+    cols = map_raw.columns.str.lower()
+    if 'latitude' in cols: map_raw.rename(columns={map_raw.columns[list(cols).index('latitude')]: 'Latitude'}, inplace=True)
+    if 'longitude' in cols: map_raw.rename(columns={map_raw.columns[list(cols).index('longitude')]: 'Longitude'}, inplace=True)
+    if 'location name' in cols: map_raw.rename(columns={map_raw.columns[list(cols).index('location name')]: 'Location Name'}, inplace=True)
+    if 'total_revenue' in cols: map_raw.rename(columns={map_raw.columns[list(cols).index('total_revenue')]: 'Total_Revenue'}, inplace=True)
+    
+    data['df_map'] = clean_numeric(map_raw, ['Latitude', 'Longitude', 'Total_Revenue'])
     
     data['df_servers'] = clean_numeric(load_safe('suspicious_servers.csv'), ['Void_Rate', 'Void_Z_Score', 'Potential_Loss'])
     data['df_voids_h'] = clean_numeric(load_safe('hourly_voids.csv'), ['Void_Rate', 'Hour_of_Day'])
@@ -124,7 +136,7 @@ st.title("📊 Business Intelligence Dashboard")
 tabs = st.tabs([
     "📉 Forecast", 
     "🍔 Menu Matrix", 
-    "🔥 Market Heatmap", 
+    "🔥 Competitive Intelligence", 
     "🚨 Theft Detection", 
     "❤️ Sentiment"
 ])
@@ -138,6 +150,7 @@ with tabs[0]:
     with col_a:
         if not data['df_forecast'].empty:
             fc_data = data['df_forecast'].copy()
+            # Column Cleanup
             if len(fc_data.columns) >= 1: fc_data.rename(columns={fc_data.columns[0]: 'Month'}, inplace=True)
             if len(fc_data.columns) >= 2: fc_data.rename(columns={fc_data.columns[1]: 'Revenue'}, inplace=True)
             fc_data['Type'] = 'Projection'
@@ -204,97 +217,131 @@ with tabs[1]:
     else:
         st.warning("⚠️ Menu data missing.")
 
-# --- TAB 2: MARKET HEATMAP ---
+# --- TAB 2: COMPETITIVE INTELLIGENCE (3 MODELS) ---
 with tabs[2]:
-    st.header("Geospatial Market Pressure")
+    st.header("Competitive Intelligence Models")
+    st.markdown("""
+    This section synthesizes three distinct models to evaluate market positioning:
+    1.  **Map Data (Static):** Physical locations of competitors relative to Best Regards.
+    2.  **Competitor Impact Ranking:** Determining which competitors actively steal market share.
+    3.  **Geo-Pressure Model:** Measuring the density of competition over time (The "Heat").
+    """)
     
     if not data['df_map'].empty:
-        # 1. Clean Map Data (Crash Prevention)
+        # --- 1. DATA PREP ---
         df_m = data['df_map'].copy()
-        
-        # Robust Rename
-        cols = df_m.columns.str.lower()
-        if 'latitude' in cols: df_m.rename(columns={df_m.columns[list(cols).index('latitude')]: 'Latitude'}, inplace=True)
-        if 'longitude' in cols: df_m.rename(columns={df_m.columns[list(cols).index('longitude')]: 'Longitude'}, inplace=True)
-        
-        # Force Numeric & Drop NaNs
-        df_m['Latitude'] = pd.to_numeric(df_m['Latitude'], errors='coerce')
-        df_m['Longitude'] = pd.to_numeric(df_m['Longitude'], errors='coerce')
         df_m = df_m.dropna(subset=['Latitude', 'Longitude'])
         
-        if not df_m.empty:
-            # TRY/EXCEPT BLOCK FOR MAP RENDERING
-            try:
-                # 2. Setup Time Data
-                heat_data = []
-                time_index = []
-                valid_time_data = False
-                
-                if not data['df_geo'].empty and 'Month' in data['df_geo'].columns and 'GeoPressure_Total' in data['df_geo'].columns:
-                    try:
-                        df_g = data['df_geo'].copy()
-                        df_g['Month'] = pd.to_datetime(df_g['Month'])
-                        df_g = df_g.sort_values('Month')
-                        
-                        max_p = df_g['GeoPressure_Total'].max()
-                        df_g['Intensity'] = (df_g['GeoPressure_Total'] / max_p).astype(float) if max_p > 0 else 0.5
-                        
-                        for _, row in df_g.iterrows():
-                            monthly_points = []
-                            intensity = float(row['Intensity'])
-                            for _, loc in df_m.iterrows():
-                                monthly_points.append([float(loc['Latitude']), float(loc['Longitude']), intensity])
-                            
-                            if monthly_points:
-                                heat_data.append(monthly_points)
-                                time_index.append(row['Month'].strftime('%Y-%m'))
-                        
-                        valid_time_data = True
-                    except:
-                        st.warning("Time-Series data corrupt. Showing static map.")
-
-                # 3. Render Map
-                # Explicitly set bounds to prevent auto-zoom crash
-                min_lat, max_lat = df_m['Latitude'].min(), df_m['Latitude'].max()
-                min_lon, max_lon = df_m['Longitude'].min(), df_m['Longitude'].max()
-                
-                m = folium.Map(location=[df_m['Latitude'].mean(), df_m['Longitude'].mean()], zoom_start=13)
-                m.fit_bounds([[min_lat, min_lon], [max_lat, max_lon]]) # FORCE BOUNDS
-                
-                # Static Markers
-                for _, row in df_m.iterrows():
-                    name_col = [c for c in df_m.columns if 'name' in c.lower()]
-                    loc_name = str(row[name_col[0]]) if name_col else "Location"
-                    color = 'red' if 'BEST REGARDS' in loc_name.upper() else 'blue'
-                    folium.CircleMarker(
-                        [row['Latitude'], row['Longitude']], 
-                        radius=5, color=color, fill=True, fill_color=color, fill_opacity=0.8,
-                        tooltip=loc_name
-                    ).add_to(m)
-
-                # Time Player
-                if valid_time_data and heat_data:
-                    plugins.HeatMapWithTime(
-                        heat_data,
-                        index=time_index,
-                        auto_play=True,
-                        radius=40,
-                        max_opacity=0.6,
-                        use_local_extrema=False # Simplify calculation
-                    ).add_to(m)
-                
-                st_folium(m, width=800, height=500, returned_objects=[])
-                
-            except Exception as e:
-                # FALLBACK STATIC MAP
-                st.error(f"Interactive Map Error: {e}. Loading Static Fallback.")
-                m_static = folium.Map(location=[df_m['Latitude'].mean(), df_m['Longitude'].mean()], zoom_start=13)
-                for _, row in df_m.iterrows():
-                    folium.Marker([row['Latitude'], row['Longitude']]).add_to(m_static)
-                st_folium(m_static, width=800, height=500, returned_objects=[])
+        # --- 2. LAYOUT ---
+        # Interactive Map Section
+        st.subheader("1. & 3. Geospatial Market Pressure (Time-Lapse Heatmap)")
+        st.caption("Use the slider at the bottom to visualize how 'Geo-Pressure' (Market Intensity) shifts over time.")
+        
+        # TRY/EXCEPT BLOCK FOR MAP RENDERING
+        try:
+            # Setup Time Data
+            heat_data = []
+            time_index = []
+            valid_time_data = False
             
+            if not data['df_geo'].empty and 'Month' in data['df_geo'].columns and 'GeoPressure_Total' in data['df_geo'].columns:
+                try:
+                    df_g = data['df_geo'].copy()
+                    df_g['Month'] = pd.to_datetime(df_g['Month'])
+                    df_g = df_g.sort_values('Month')
+                    
+                    max_p = df_g['GeoPressure_Total'].max()
+                    # Scale intensity 0-1
+                    df_g['Intensity'] = (df_g['GeoPressure_Total'] / max_p).astype(float) if max_p > 0 else 0.5
+                    
+                    for _, row in df_g.iterrows():
+                        monthly_points = []
+                        # Force intensity to simple float
+                        intensity = float(row['Intensity'])
+                        
+                        for _, loc in df_m.iterrows():
+                            # STRICT FLOAT CONVERSION [lat, lon, intensity]
+                            lat = float(loc['Latitude'])
+                            lon = float(loc['Longitude'])
+                            monthly_points.append([lat, lon, intensity])
+                        
+                        if monthly_points:
+                            heat_data.append(monthly_points)
+                            # Ensure time index is a simple list of strings
+                            time_index.append(str(row['Month'].strftime('%Y-%m')))
+                    
+                    valid_time_data = True
+                except Exception as e:
+                    st.warning(f"Time-Series calculation error: {e}")
+
+            # Render Map
+            # Force bounds based on static data
+            min_lat, max_lat = df_m['Latitude'].min(), df_m['Latitude'].max()
+            min_lon, max_lon = df_m['Longitude'].min(), df_m['Longitude'].max()
+            
+            m = folium.Map(location=[df_m['Latitude'].mean(), df_m['Longitude'].mean()], zoom_start=13)
+            # Explicitly fit bounds to prevent auto-zoom crash
+            m.fit_bounds([[min_lat, min_lon], [max_lat, max_lon]]) 
+            
+            # Static Markers
+            for _, row in df_m.iterrows():
+                loc_name = str(row.get('Location Name', 'Location'))
+                color = 'red' if 'BEST REGARDS' in loc_name.upper() else 'blue'
+                folium.CircleMarker(
+                    [row['Latitude'], row['Longitude']], 
+                    radius=6, color=color, fill=True, fill_color=color, fill_opacity=0.9,
+                    tooltip=loc_name
+                ).add_to(m)
+
+            # Time Player
+            if valid_time_data and heat_data:
+                plugins.HeatMapWithTime(
+                    heat_data,
+                    index=time_index,
+                    auto_play=True,
+                    radius=50,
+                    max_opacity=0.6,
+                    use_local_extrema=False
+                ).add_to(m)
+            
+            st_folium(m, width=900, height=500, returned_objects=[])
+            
+        except Exception as e:
+            # FALLBACK STATIC MAP
+            st.error(f"Interactive Map Error: {e}. Loading Static Fallback.")
+            m_static = folium.Map(location=[df_m['Latitude'].mean(), df_m['Longitude'].mean()], zoom_start=13)
+            for _, row in df_m.iterrows():
+                folium.Marker([row['Latitude'], row['Longitude']]).add_to(m_static)
+            st_folium(m_static, width=900, height=500, returned_objects=[])
+            
+        # --- 3. IMPACT RANKINGS ---
+        st.markdown("---")
+        st.subheader("2. Competitor Impact Rankings")
+        st.markdown("""
+        **What this shows:**
+        We rank competitors not just by distance, but by estimated **Revenue Impact**. 
+        Competitors with high revenue that are geographically close exert the highest "Gravitational Pull" on your customers.
+        """)
+        
+        # Create Ranking Table
+        impact_df = df_m.copy()
+        # Ensure we have revenue data
+        if 'Total_Revenue' in impact_df.columns:
+            impact_df = impact_df.sort_values('Total_Revenue', ascending=False)
+            impact_df = impact_df[['Location Name', 'Total_Revenue', 'Distance_mi'] if 'Distance_mi' in impact_df.columns else ['Location Name', 'Total_Revenue']]
+            
+            # Display Top 10
+            st.dataframe(
+                impact_df.head(10),
+                hide_index=True,
+                column_config={
+                    "Total_Revenue": st.column_config.NumberColumn("Est. Annual Revenue", format="$%.0f"),
+                    "Distance_mi": st.column_config.NumberColumn("Distance (mi)", format="%.2f mi")
+                }
+            )
         else:
-            st.error("Map Data exists but contains no valid Latitude/Longitude.")
+            st.info("Revenue data missing for Impact Rankings.")
+            
     else:
         st.warning("⚠️ Map data missing.")
 
