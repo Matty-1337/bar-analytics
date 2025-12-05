@@ -347,10 +347,20 @@ with tabs[2]:
                 st.warning("Could not load Time-Lapse Slider (Static Map Only)")
         
         try:
+            # Determine Map Center (Prioritize Best Regards)
+            center_lat = df_m['Latitude'].mean()
+            center_lon = df_m['Longitude'].mean()
+            
+            # Find Best Regards specifically to center the camera
+            br_row = df_m[df_m['Location Name'].astype(str).str.upper().str.contains("BEST REGARDS")]
+            if not br_row.empty:
+                center_lat = br_row.iloc[0]['Latitude']
+                center_lon = br_row.iloc[0]['Longitude']
+
             # Prepare Map (Height increased to 700)
             m = folium.Map(
-                location=[df_m['Latitude'].mean(), df_m['Longitude'].mean()], 
-                zoom_start=13,
+                location=[center_lat, center_lon], 
+                zoom_start=14, 
                 scrollWheelZoom=False # Disable scroll zoom
             )
             
