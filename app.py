@@ -364,21 +364,48 @@ with tabs[2]:
                 scrollWheelZoom=False # Disable scroll zoom
             )
             
-            # --- STATIC MARKERS ---
+            # --- DYNAMIC MARKERS (Color matched to Heat) ---
+            
+            # Helper to generate color based on intensity
+            def get_heat_color(intensity):
+                # Gradient: Cool Blue -> Green -> Yellow -> Hot Red
+                if intensity < 0.25: return '#2A93D5' # Cool Blue
+                elif intensity < 0.5: return '#2AD55F' # Green
+                elif intensity < 0.75: return '#F4D03F' # Yellow
+                else: return '#E74C3C' # Hot Red
+
+            competitor_color = get_heat_color(geo_pressure_val)
+            
             for _, row in df_m.iterrows():
                 loc_name = str(row.get('Location Name', 'Location'))
-                color = 'red' if 'BEST REGARDS' in loc_name.upper() else 'blue'
+                is_us = 'BEST REGARDS' in loc_name.upper()
+                
+                if is_us:
+                    marker_color = '#FF0000' # Bright Red
+                    outline_color = '#8B0000'
+                    radius = 8
+                    z_index = 1000
+                else:
+                    marker_color = competitor_color
+                    outline_color = competitor_color 
+                    radius = 4 # Smaller dots for competitors
+                    z_index = 1
+
                 folium.CircleMarker(
                     [row['Latitude'], row['Longitude']], 
-                    radius=6, color=color, fill=True, fill_color=color, fill_opacity=0.9,
-                    tooltip=loc_name
+                    radius=radius, 
+                    color=outline_color, 
+                    fill=True, 
+                    fill_color=marker_color, 
+                    fill_opacity=0.9,
+                    weight=1.5,
+                    tooltip=loc_name,
+                    z_index_offset=z_index
                 ).add_to(m)
 
             # --- DYNAMIC HEATMAP LAYER (Controlled by Slider) ---
-            # We generate a heatmap layer just for the SELECTED month
             heat_points = []
             for _, loc in df_m.iterrows():
-                # Apply the specific month's pressure to all locations
                 heat_points.append([loc['Latitude'], loc['Longitude'], float(geo_pressure_val)])
             
             plugins.HeatMap(heat_points, radius=50, blur=30).add_to(m)
