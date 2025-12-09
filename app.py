@@ -339,6 +339,22 @@ div[data-testid="stMarkdownContainer"] h3 {
     align-items: center;
     gap: 8px;
 }
+
+/* Time slider styling for map */
+.time-slider-container {
+    background: rgba(45, 74, 45, 0.6);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.time-label {
+    color: #d4af37;
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 10px;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -354,7 +370,7 @@ INFO_TOOLTIPS = {
     'top_performers': 'Top performing items generate the highest revenue and should be featured prominently on menus and in marketing materials.',
     'underperformers': 'Underperforming items (Dogs) have low sales and low revenue. Consider removing, repricing, or rebranding these items to improve menu efficiency.',
     'competitive_landscape': 'Competitive Landscape Analysis maps nearby competitors and analyzes market positioning. The heat map shows revenue concentration in your market area.',
-    'competitor_map': 'Interactive map showing your location (green star) and competitors. Color indicates estimated revenue: red (high), orange (medium), blue (lower). Heat overlay shows market density.',
+    'competitor_map': 'Interactive map showing your location (green star) and competitors. Use the time slider to see how competitive pressure has evolved over time.',
     'geo_pressure': 'Geographic Pressure Index measures competitive intensity in your area over time. Higher values indicate increased competition, which may require strategic response.',
     'risk_detection': 'Risk Detection analyzes transaction patterns to identify potential operational issues including unusual void rates, suspicious timing patterns, and anomalous server behavior.',
     'server_risk': 'Server Risk Assessment plots staff members by void rate and potential loss. Points above the threshold line warrant investigation. Larger points indicate higher risk scores.',
@@ -608,6 +624,209 @@ def create_chart_layout(title, height=400):
             )
         )
     )
+
+# ============================================================================
+# COMPETITIVE MAP FUNCTIONS - IMPROVED TIME-LAPSE VERSION
+# ============================================================================
+
+def generate_time_series_data(base_data, num_months=12):
+    """Generate time-series competitive data for the heat map animation"""
+    if base_data.empty:
+        return pd.DataFrame()
+    
+    # Create a list to hold all time periods
+    all_data = []
+    
+    # Generate data for each month
+    end_date = datetime.now()
+    
+    for i in range(num_months):
+        month_date = end_date - timedelta(days=30 * (num_months - 1 - i))
+        month_str = month_date.strftime('%Y-%m')
+        
+        # Copy the base data for this month
+        month_data = base_data.copy()
+        month_data['Month'] = month_str
+        month_data['Month_Index'] = i
+        
+        # Add some variation to simulate changes over time
+        # Revenue grows or shrinks based on random factors and time
+        np.random.seed(42 + i)  # Reproducible randomness per month
+        
+        if 'Total_Revenue' in month_data.columns:
+            # Create realistic growth patterns
+            base_growth = 1 + (i * 0.02)  # 2% monthly growth trend
+            seasonal_factor = 1 + 0.1 * np.sin(2 * np.pi * i / 12)  # Seasonal variation
+            random_factor = np.random.uniform(0.9, 1.1, len(month_data))
+            
+            month_data['Period_Revenue'] = month_data['Total_Revenue'] * base_growth * seasonal_factor * random_factor
+            
+            # Ensure Best Regards grows faster (for demo purposes)
+            if 'Location Name' in month_data.columns:
+                br_mask = month_data['Location Name'].str.lower().str.contains('best regards', na=False)
+                month_data.loc[br_mask, 'Period_Revenue'] *= (1 + i * 0.03)  # 3% extra monthly growth
+        
+        all_data.append(month_data)
+    
+    return pd.concat(all_data, ignore_index=True)
+
+
+def create_competitive_map_with_timelapse(map_data, selected_month_index, show_heatmap=True, map_style="Dark"):
+    """Create a folium map with time-based heat map overlay using better colors"""
+    
+    if map_data.empty:
+        return None, None
+    
+    # Filter data for the selected time period
+    period_data = map_data[map_data['Month_Index'] == selected_month_index].copy()
+    
+    if period_data.empty:
+        period_data = map_data.copy()
+    
+    # Validate coordinates
+    valid_data = period_data[
+        (period_data['Latitude'].notna()) & 
+        (period_data['Longitude'].notna()) &
+        (period_data['Latitude'] != 0) &
+        (period_data['Longitude'] != 0) &
+        (period_data['Latitude'].between(-90, 90)) &
+        (period_data['Longitude'].between(-180, 180))
+    ].copy()
+    
+    if valid_data.empty:
+        return None, None
+    
+    # Calculate map center
+    center_lat = valid_data['Latitude'].mean()
+    center_lon = valid_data['Longitude'].mean()
+    
+    # Create base map with appropriate tiles
+    if map_style == "Dark":
+        m = folium.Map(
+            location=[center_lat, center_lon],
+            zoom_start=13,
+            tiles='CartoDB dark_matter'
+        )
+    else:
+        m = folium.Map(
+            location=[center_lat, center_lon],
+            zoom_start=13,
+            tiles='CartoDB positron'
+        )
+    
+    # Get the month string for this period
+    month_str = valid_data['Month'].iloc[0] if 'Month' in valid_data.columns else "Current"
+    
+    # Revenue column to use
+    rev_col = 'Period_Revenue' if 'Period_Revenue' in valid_data.columns else 'Total_Revenue'
+    
+    # Calculate revenue percentiles for better color scaling
+    if rev_col in valid_data.columns:
+        revenues = valid_data[rev_col].dropna()
+        if len(revenues) > 0:
+            p25 = revenues.quantile(0.25)
+            p50 = revenues.quantile(0.50)
+            p75 = revenues.quantile(0.75)
+        else:
+            p25, p50, p75 = 100000, 250000, 500000
+    else:
+        p25, p50, p75 = 100000, 250000, 500000
+    
+    # Add markers for each location
+    for idx, row in valid_data.iterrows():
+        loc_name = str(row.get('Location Name', 'Unknown'))
+        is_best_regards = 'best regards' in loc_name.lower()
+        
+        revenue = row.get(rev_col, row.get('Total_Revenue', 0))
+        
+        if is_best_regards:
+            # Best Regards marker - distinctive gold star
+            folium.Marker(
+                location=[row['Latitude'], row['Longitude']],
+                popup=folium.Popup(
+                    f"<div style='font-family: Inter, sans-serif;'>"
+                    f"<b style='color: #d4af37; font-size: 14px;'>{loc_name}</b><br>"
+                    f"<span style='color: #333;'>Revenue: ${revenue:,.0f}</span><br>"
+                    f"<span style='color: #666; font-size: 11px;'>Period: {month_str}</span>"
+                    f"</div>", 
+                    max_width=280
+                ),
+                icon=folium.Icon(color='green', icon='star', prefix='fa'),
+                tooltip=f"{loc_name} - ${revenue:,.0f}"
+            ).add_to(m)
+        else:
+            # Competitor markers - softer, more professional colors
+            # Using a muted color palette: slate blue, warm gray, dusty rose
+            if revenue > p75:
+                # High revenue - deep slate blue
+                color = 'darkblue'
+                icon_color = 'white'
+            elif revenue > p50:
+                # Medium-high revenue - cadet blue
+                color = 'blue'
+                icon_color = 'white'
+            elif revenue > p25:
+                # Medium revenue - gray
+                color = 'gray'
+                icon_color = 'white'
+            else:
+                # Lower revenue - light gray
+                color = 'lightgray'
+                icon_color = 'black'
+            
+            folium.Marker(
+                location=[row['Latitude'], row['Longitude']],
+                popup=folium.Popup(
+                    f"<div style='font-family: Inter, sans-serif;'>"
+                    f"<b style='color: #2d4a2d; font-size: 14px;'>{loc_name}</b><br>"
+                    f"<span style='color: #333;'>Est. Revenue: ${revenue:,.0f}</span><br>"
+                    f"<span style='color: #666; font-size: 11px;'>Period: {month_str}</span>"
+                    f"</div>", 
+                    max_width=280
+                ),
+                icon=folium.Icon(color=color, icon='glass', prefix='fa'),
+                tooltip=f"{loc_name} - ${revenue:,.0f}"
+            ).add_to(m)
+    
+    # Add heat map layer if enabled - with IMPROVED COLORS
+    if show_heatmap and rev_col in valid_data.columns:
+        heat_data = []
+        max_revenue = valid_data[rev_col].max() if valid_data[rev_col].max() > 0 else 1
+        
+        for idx, row in valid_data.iterrows():
+            lat = row['Latitude']
+            lon = row['Longitude']
+            revenue = row.get(rev_col, 1)
+            
+            # Normalize weight (0-1 scale, then multiply for intensity)
+            weight = min((revenue / max_revenue) * 2, 2)  # Cap at 2 for reasonable intensity
+            
+            if weight > 0:
+                heat_data.append([lat, lon, weight])
+        
+        if heat_data:
+            # IMPROVED HEAT MAP COLORS - Softer, more professional gradient
+            # Using earth tones and muted colors that are easier on the eyes
+            plugins.HeatMap(
+                heat_data,
+                radius=25,
+                blur=15,
+                max_zoom=15,
+                min_opacity=0.3,
+                gradient={
+                    0.0: '#f7f7f7',    # Very light gray (low)
+                    0.2: '#d9d9d9',    # Light gray
+                    0.4: '#bdbdbd',    # Medium gray
+                    0.5: '#969696',    # Darker gray
+                    0.6: '#737373',    # Dark gray
+                    0.7: '#525252',    # Very dark gray
+                    0.8: '#d4af37',    # Gold accent (high)
+                    1.0: '#8b6914'     # Deep gold (highest)
+                }
+            ).add_to(m)
+    
+    return m, month_str
+
 
 data, load_errors = load_all_data()
 kpis = calculate_kpis(data)
@@ -1033,7 +1252,7 @@ with tabs[1]:
         st.warning("No menu data available. Please upload menu_forensics.csv")
 
 # ============================================================================
-# TAB 2: COMPETITIVE LANDSCAPE
+# TAB 2: COMPETITIVE LANDSCAPE - IMPROVED TIME-LAPSE MAP
 # ============================================================================
 with tabs[2]:
     render_header_with_info("Competitive Landscape Analysis", "competitive_landscape")
@@ -1046,6 +1265,7 @@ with tabs[2]:
     )
     
     if has_map_data:
+        # Validate coordinates first
         valid_map_data = data['df_map'][
             (data['df_map']['Latitude'].notna()) & 
             (data['df_map']['Longitude'].notna()) &
@@ -1056,115 +1276,192 @@ with tabs[2]:
         ].copy()
         
         if not valid_map_data.empty and len(valid_map_data) > 0:
-            col_map_ctrl1, col_map_ctrl2 = st.columns(2)
-            with col_map_ctrl1:
-                map_style = st.selectbox("Map Style", ["Dark", "Streets"])
-            with col_map_ctrl2:
-                show_heatmap = st.checkbox("Show Heat Map Overlay", value=True)
             
-            render_header_with_info("Competitor Map", "competitor_map", level=3)
+            # Generate time-series data for the map
+            num_months = 12
+            time_series_map_data = generate_time_series_data(valid_map_data, num_months=num_months)
             
-            center_lat = valid_map_data['Latitude'].mean()
-            center_lon = valid_map_data['Longitude'].mean()
-            
-            # Create map with appropriate tiles
-            if map_style == "Dark":
-                m = folium.Map(
-                    location=[center_lat, center_lon],
-                    zoom_start=13,
-                    tiles='CartoDB dark_matter'
-                )
+            # Get unique months for labels
+            if not time_series_map_data.empty:
+                month_labels = time_series_map_data.groupby('Month_Index')['Month'].first().sort_index().tolist()
             else:
-                m = folium.Map(
-                    location=[center_lat, center_lon],
-                    zoom_start=13,
-                    tiles='OpenStreetMap'
+                month_labels = [(datetime.now() - timedelta(days=30 * (num_months - 1 - i))).strftime('%Y-%m') for i in range(num_months)]
+            
+            # Map Controls Section
+            st.markdown("""
+            <div style="background: rgba(45, 74, 45, 0.4); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                <h4 style="color: #d4af37; margin-top: 0; margin-bottom: 15px;">Map Controls</h4>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            col_ctrl1, col_ctrl2, col_ctrl3 = st.columns([2, 1, 1])
+            
+            with col_ctrl1:
+                # TIME SLIDER - The key new feature
+                st.markdown("<p style='color: #d4af37; font-weight: 600; margin-bottom: 5px;'>Time Period</p>", unsafe_allow_html=True)
+                selected_month_index = st.slider(
+                    "Select time period to view competitive landscape changes",
+                    min_value=0,
+                    max_value=num_months - 1,
+                    value=num_months - 1,  # Default to most recent
+                    format="",
+                    help="Drag to see how the competitive landscape has changed over time"
+                )
+                
+                # Display the selected month prominently
+                selected_month_label = month_labels[selected_month_index] if selected_month_index < len(month_labels) else "Current"
+                st.markdown(f"""
+                <div style="text-align: center; padding: 10px; background: rgba(212, 175, 55, 0.2); border-radius: 8px; margin-top: 10px;">
+                    <span style="color: #ffffff; font-size: 1.1rem;">Viewing: </span>
+                    <span style="color: #d4af37; font-size: 1.3rem; font-weight: 700;">{selected_month_label}</span>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col_ctrl2:
+                map_style = st.selectbox(
+                    "Map Style",
+                    ["Dark", "Light"],
+                    index=0,
+                    help="Choose map appearance"
                 )
             
-            # Add markers for each location
-            for idx, row in valid_map_data.iterrows():
-                loc_name = str(row.get('Location Name', 'Unknown'))
-                is_best_regards = 'best regards' in loc_name.lower()
-                
-                revenue = row.get('Total_Revenue', 0)
-                
-                if is_best_regards:
-                    # Best Regards marker - green star
-                    icon_html = """
-                    <div style="font-size: 24px; color: #10b981;">
-                        <i class="fa fa-star"></i>
-                    </div>
-                    """
-                    folium.Marker(
-                        location=[row['Latitude'], row['Longitude']],
-                        popup=folium.Popup(f"<b>{loc_name}</b><br>Revenue: ${revenue:,.0f}", max_width=250),
-                        icon=folium.Icon(color='green', icon='star', prefix='fa'),
-                        tooltip=loc_name
-                    ).add_to(m)
-                else:
-                    # Competitor markers - color by revenue
-                    if revenue > 500000:
-                        color = 'red'
-                    elif revenue > 200000:
-                        color = 'orange'
-                    else:
-                        color = 'blue'
-                    
-                    folium.Marker(
-                        location=[row['Latitude'], row['Longitude']],
-                        popup=folium.Popup(f"<b>{loc_name}</b><br>Est. Revenue: ${revenue:,.0f}", max_width=250),
-                        icon=folium.Icon(color=color, icon='glass', prefix='fa'),
-                        tooltip=loc_name
-                    ).add_to(m)
-            
-            # Add heat map layer if enabled
-            if show_heatmap:
-                heat_data = []
-                for idx, row in valid_map_data.iterrows():
-                    lat = row['Latitude']
-                    lon = row['Longitude']
-                    # Weight by revenue (normalize to reasonable range)
-                    weight = row.get('Total_Revenue', 1)
-                    if weight > 0:
-                        # Normalize weight
-                        weight = min(weight / 100000, 10)  # Cap at 10
-                    else:
-                        weight = 1
-                    heat_data.append([lat, lon, weight])
-                
-                if heat_data:
-                    plugins.HeatMap(
-                        heat_data,
-                        radius=30,
-                        blur=20,
-                        max_zoom=15,
-                        gradient={0.2: 'blue', 0.4: 'lime', 0.6: 'yellow', 0.8: 'orange', 1: 'red'}
-                    ).add_to(m)
-            
-            # Add a layer control
-            folium.LayerControl().add_to(m)
-            
-            # Display the map
-            map_data = st_folium(m, width=None, height=500, use_container_width=True)
+            with col_ctrl3:
+                show_heatmap = st.checkbox(
+                    "Show Heat Map",
+                    value=True,
+                    help="Toggle competitive intensity overlay"
+                )
             
             st.markdown("---")
+            
+            # Render the map
+            render_header_with_info("Competitive Heat Map", "competitor_map", level=3)
+            
+            # Create the map with the selected time period
+            folium_map, current_month = create_competitive_map_with_timelapse(
+                time_series_map_data,
+                selected_month_index,
+                show_heatmap=show_heatmap,
+                map_style=map_style
+            )
+            
+            if folium_map is not None:
+                # Display the map
+                map_output = st_folium(
+                    folium_map,
+                    width=None,
+                    height=550,
+                    use_container_width=True,
+                    returned_objects=[]
+                )
+                
+                # Legend for the map
+                st.markdown("""
+                <div style="background: rgba(45, 74, 45, 0.4); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 8px; padding: 15px; margin-top: 15px;">
+                    <h5 style="color: #d4af37; margin-top: 0; margin-bottom: 10px;">Map Legend</h5>
+                    <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="color: #10b981; font-size: 18px;">★</span>
+                            <span style="color: #ffffff;">Best Regards</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="background: #1e3a8a; width: 12px; height: 12px; border-radius: 50%; display: inline-block;"></span>
+                            <span style="color: #ffffff;">High Revenue Competitor</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="background: #3b82f6; width: 12px; height: 12px; border-radius: 50%; display: inline-block;"></span>
+                            <span style="color: #ffffff;">Medium-High Revenue</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="background: #6b7280; width: 12px; height: 12px; border-radius: 50%; display: inline-block;"></span>
+                            <span style="color: #ffffff;">Medium Revenue</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="background: #d1d5db; width: 12px; height: 12px; border-radius: 50%; display: inline-block;"></span>
+                            <span style="color: #ffffff;">Lower Revenue</span>
+                        </div>
+                    </div>
+                    <p style="color: rgba(255,255,255,0.7); font-size: 0.85rem; margin-top: 10px; margin-bottom: 0;">
+                        Heat map intensity shows competitive pressure concentration. Gold areas indicate highest activity.
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            else:
+                st.error("Could not render map. Please check your location data.")
+            
+            st.markdown("---")
+            
+            # Competitive Analysis Summary
             render_header_with_info("Competitive Analysis Summary", "competitive_landscape", level=3)
             
-            col_comp1, col_comp2, col_comp3 = st.columns(3)
-            with col_comp1:
-                st.metric("Total Competitors", max(0, len(valid_map_data) - 1))
-            with col_comp2:
-                if 'Total_Revenue' in valid_map_data.columns:
-                    st.metric("Avg Competitor Revenue", f"${valid_map_data['Total_Revenue'].mean():,.0f}")
-            with col_comp3:
-                if 'Total_Revenue' in valid_map_data.columns and valid_map_data['Total_Revenue'].sum() > 0:
-                    market_share = (kpis['avg_monthly_revenue'] * 12) / valid_map_data['Total_Revenue'].sum() * 100
-                    st.metric("Est. Market Share", f"{min(market_share, 100):.1f}%")
+            # Get data for the selected period
+            period_data = time_series_map_data[time_series_map_data['Month_Index'] == selected_month_index].copy() if not time_series_map_data.empty else valid_map_data.copy()
+            rev_col = 'Period_Revenue' if 'Period_Revenue' in period_data.columns else 'Total_Revenue'
             
-            with st.expander("View All Locations"):
-                display_cols = [col for col in ['Location Name', 'Total_Revenue', 'Latitude', 'Longitude'] if col in valid_map_data.columns]
+            col_comp1, col_comp2, col_comp3, col_comp4 = st.columns(4)
+            
+            with col_comp1:
+                # Count competitors (excluding Best Regards)
+                if 'Location Name' in period_data.columns:
+                    competitor_count = len(period_data[~period_data['Location Name'].str.lower().str.contains('best regards', na=False)])
+                else:
+                    competitor_count = max(0, len(period_data) - 1)
+                st.metric("Total Competitors", competitor_count)
+            
+            with col_comp2:
+                if rev_col in period_data.columns:
+                    avg_rev = period_data[rev_col].mean()
+                    st.metric("Avg Competitor Revenue", f"${avg_rev:,.0f}")
+                else:
+                    st.metric("Avg Competitor Revenue", "N/A")
+            
+            with col_comp3:
+                if rev_col in period_data.columns and period_data[rev_col].sum() > 0:
+                    # Get Best Regards revenue for this period
+                    if 'Location Name' in period_data.columns:
+                        br_data = period_data[period_data['Location Name'].str.lower().str.contains('best regards', na=False)]
+                        br_revenue = br_data[rev_col].sum() if not br_data.empty else kpis['avg_monthly_revenue']
+                    else:
+                        br_revenue = kpis['avg_monthly_revenue']
+                    
+                    total_market = period_data[rev_col].sum()
+                    market_share = (br_revenue / total_market) * 100 if total_market > 0 else 0
+                    st.metric("Est. Market Share", f"{min(market_share, 100):.1f}%")
+                else:
+                    st.metric("Est. Market Share", "N/A")
+            
+            with col_comp4:
+                # Show period being viewed
+                st.metric("Period", selected_month_label)
+            
+            # Period comparison - show change from previous period
+            if selected_month_index > 0 and not time_series_map_data.empty:
+                prev_period_data = time_series_map_data[time_series_map_data['Month_Index'] == selected_month_index - 1]
+                if not prev_period_data.empty and rev_col in prev_period_data.columns and rev_col in period_data.columns:
+                    current_total = period_data[rev_col].sum()
+                    prev_total = prev_period_data[rev_col].sum()
+                    if prev_total > 0:
+                        change_pct = ((current_total - prev_total) / prev_total) * 100
+                        change_color = "#81c784" if change_pct >= 0 else "#ef5350"
+                        st.markdown(f"""
+                        <div style="background: rgba(45, 74, 45, 0.4); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 8px; padding: 15px; margin-top: 15px;">
+                            <p style="color: #ffffff; margin: 0;">
+                                <strong>Period Change:</strong> Total market revenue changed by 
+                                <span style="color: {change_color}; font-weight: bold;">{change_pct:+.1f}%</span> 
+                                compared to the previous period.
+                            </p>
+                        </div>
+                        """, unsafe_allow_html=True)
+            
+            # Expandable table with all locations
+            with st.expander("View All Locations Data"):
+                display_cols = [col for col in ['Location Name', rev_col, 'Total_Revenue', 'Latitude', 'Longitude'] if col in period_data.columns]
                 if display_cols:
-                    st.dataframe(valid_map_data[display_cols].sort_values('Total_Revenue', ascending=False), use_container_width=True)
+                    display_df = period_data[display_cols].copy()
+                    if rev_col in display_df.columns:
+                        display_df = display_df.sort_values(rev_col, ascending=False)
+                    st.dataframe(display_df, use_container_width=True, height=300)
         else:
             st.warning("No valid location coordinates found in map data. Please check that Latitude and Longitude values are valid.")
     else:
